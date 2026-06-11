@@ -36,8 +36,6 @@ jobs:
         run: |
           # Peer's GitHub username — used to route push notifications
           PEER_GITHUB="arindakhill"
-          # Push notifications to owner go to the shared Agents WhatsApp group
-          AGENTS_GROUP_JID="120363408378849117@g.us"
 
           if [ "$EVENT_NAME" = "push" ]; then
             # Skip bot-generated pushes (GitHub Actions deployments, etc.)
@@ -50,13 +48,13 @@ jobs:
             COMMIT_MSGS=$(echo "$COMMITS_JSON" | jq -r '.[0:5] | .[] | "• " + (.message | split("\n")[0])' 2>/dev/null || echo "• (commits unavailable)")
 
             if [ "$PUSHER" = "$PEER_GITHUB" ]; then
-              # CTO pushed → notify Dennis's agent via Agents group
-              TARGET_JID="$AGENTS_GROUP_JID"
+              # CTO pushed → notify Dennis's agent directly
+              TARGET_JID="$OWNER_JID"
               TARGET_TRIGGER="$TRIGGER_PREFIX"
               PUSHER_LABEL="CTO Hillary"
             else
-              # Dennis pushed → notify Hillary's agent via Agents group
-              TARGET_JID="$AGENTS_GROUP_JID"
+              # Dennis pushed → notify Hillary's agent directly
+              TARGET_JID="$PEER_JID"
               TARGET_TRIGGER="$PEER_TRIGGER"
               PUSHER_LABEL="gEN!u\$ Dennis"
             fi
