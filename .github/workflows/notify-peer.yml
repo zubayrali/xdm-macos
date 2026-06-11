@@ -50,13 +50,13 @@ jobs:
             COMMIT_MSGS=$(echo "$COMMITS_JSON" | jq -r '.[0:5] | .[] | "• " + (.message | split("\n")[0])' 2>/dev/null || echo "• (commits unavailable)")
 
             if [ "$PUSHER" = "$PEER_GITHUB" ]; then
-              # CTO pushed → notify Dennis via Agents group
+              # CTO pushed → notify Dennis's agent via Agents group
               TARGET_JID="$AGENTS_GROUP_JID"
               TARGET_TRIGGER="$TRIGGER_PREFIX"
               PUSHER_LABEL="CTO Hillary"
             else
-              # Dennis (or anyone else) pushed → notify Hillary's agent directly
-              TARGET_JID="$PEER_JID"
+              # Dennis pushed → notify Hillary's agent via Agents group
+              TARGET_JID="$AGENTS_GROUP_JID"
               TARGET_TRIGGER="$PEER_TRIGGER"
               PUSHER_LABEL="gEN!u\$ Dennis"
             fi
