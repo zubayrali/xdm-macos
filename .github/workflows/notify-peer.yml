@@ -34,7 +34,7 @@ jobs:
           PEER_JID:      ${{ secrets.PEER_JID }}
           OWNER_JID:     ${{ secrets.OWNER_JID }}
         run: |
-          PEER_GITHUB="arindakhill"
+          PEER_GITHUB="arindahills"
 
           if [ "$EVENT_NAME" = "push" ]; then
             if echo "$PUSHER" | grep -q '\[bot\]'; then
