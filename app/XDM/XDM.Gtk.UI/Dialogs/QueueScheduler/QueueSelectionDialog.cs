@@ -112,7 +112,7 @@ namespace XDM.GtkUI.Dialogs.QueueScheduler
         public static QueueSelectionDialog CreateFromGladeFile(Window parent, WindowGroup group)
         {
             var builder = new Builder();
-            builder.AddFromFile(IoPath.Combine(AppDomain.CurrentDomain.BaseDirectory, "glade", "queue-selection-dialog.glade"));
+            builder.AddGladeFile(IoPath.Combine(AppDomain.CurrentDomain.BaseDirectory, "glade", "queue-selection-dialog.glade"));
             return new QueueSelectionDialog(builder, parent, group);
         }
     }

@@ -79,7 +79,7 @@ namespace XDM.GtkUI.Dialogs
         public static CredentialsDialog CreateFromGladeFile(Window parent, WindowGroup group)
         {
             var builder = new Builder();
-            builder.AddFromFile(IoPath.Combine(AppDomain.CurrentDomain.BaseDirectory, "glade", "credential-dialog.glade"));
+            builder.AddGladeFile(IoPath.Combine(AppDomain.CurrentDomain.BaseDirectory, "glade", "credential-dialog.glade"));
             return new CredentialsDialog(builder, parent, group);
         }
     }

@@ -1318,7 +1318,7 @@ namespace XDM.GtkUI
             {
                 this.Show();
             }
-            this.Present();
+            XDM.GtkUI.Utils.MacUtil.PresentAndActivate(this);
         }
     }
 }

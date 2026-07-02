@@ -86,6 +86,32 @@ namespace XDM.Core.BrowserMonitoring
                         });
                 }
             }
+
+            // HLS and DASH captures also carry a TabUrl; rename them when the page title
+            // arrives (many streaming sites set the real <title> after the manifest loads).
+            foreach (var e in hlsVideoList)
+            {
+                var u = e.Value.Value.TabUrl;
+                if (string.IsNullOrEmpty(u) || u != tabUrl) continue;
+                e.Value.Key.File = GenerateUpdatedFileName(e.Value.Key.File, tabTitle);
+                this.MediaUpdated?.Invoke(this, new MediaInfoEventArgs
+                {
+                    MediaInfo = new MediaInfo(e.Key, e.Value.Key.File, e.Value.Value.DescriptionText,
+                        e.Value.Value.CreationTime, e.Value.Value.TabId)
+                });
+            }
+
+            foreach (var e in dashVideoList)
+            {
+                var u = e.Value.Value.TabUrl;
+                if (string.IsNullOrEmpty(u) || u != tabUrl) continue;
+                e.Value.Key.File = GenerateUpdatedFileName(e.Value.Key.File, tabTitle);
+                this.MediaUpdated?.Invoke(this, new MediaInfoEventArgs
+                {
+                    MediaInfo = new MediaInfo(e.Key, e.Value.Key.File, e.Value.Value.DescriptionText,
+                        e.Value.Value.CreationTime, e.Value.Value.TabId)
+                });
+            }
         }
 
         public bool IsFFmpegRequiredForDownload(string id)

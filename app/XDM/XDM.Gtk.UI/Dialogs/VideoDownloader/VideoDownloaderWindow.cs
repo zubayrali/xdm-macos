@@ -164,7 +164,8 @@ namespace XDM.GtkUI.Dialogs.VideoDownloader
 
         public void ShowWindow()
         {
-            this.Show();
+            // Present() also activates the app on macOS; Show() leaves the window buried behind the browser
+            MacUtil.PresentAndActivate(this);
         }
 
         private Gtk.MenuItem dontAddToQueueMenuItem;
@@ -518,7 +519,7 @@ namespace XDM.GtkUI.Dialogs.VideoDownloader
         public static VideoDownloaderWindow CreateFromGladeFile()
         {
             var builder = new Builder();
-            builder.AddFromFile(IoPath.Combine(AppDomain.CurrentDomain.BaseDirectory, "glade", "video-downloader-window.glade"));
+            builder.AddGladeFile(IoPath.Combine(AppDomain.CurrentDomain.BaseDirectory, "glade", "video-downloader-window.glade"));
             return new VideoDownloaderWindow(builder);
         }
     }

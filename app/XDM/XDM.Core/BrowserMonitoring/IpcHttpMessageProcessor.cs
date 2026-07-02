@@ -56,6 +56,7 @@ namespace XDM.Core.BrowserMonitoring
                         OnDownloadMessage(context);
                         break;
                     case "/media":
+                    case "/video": // alias: some extension forks POST video captures to /video
                         OnMediaMessage(context);
                         break;
                     case "/tab-update":

@@ -14,8 +14,18 @@
         "tabs",
         "storage",
         "contextMenus",
-        "alarms"
+        "alarms",
+        "scripting"
     ],
+    "commands": {
+        "toggle-monitoring": {
+            "suggested_key": {
+                "default": "Ctrl+Shift+E",
+                "mac": "Command+Shift+E"
+            },
+            "description": "Toggle XDM browser monitoring"
+        }
+    },
     "background": {
         "service_worker": "main.js",
         "type": "module"

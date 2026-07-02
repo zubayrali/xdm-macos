@@ -1,0 +1,91 @@
+#!/bin/bash
+# Builds a self-contained xdm.app for macOS.
+# Requires: .NET 8 SDK (brew install dotnet@8), GTK3 at runtime (brew install gtk+3 adwaita-icon-theme)
+# Usage: ./make-macos-app [osx-arm64|osx-x64]   (defaults to host arch)
+set -e
+
+VERSION=8.0.9
+DOTNET="${DOTNET:-dotnet}"
+command -v "$DOTNET" >/dev/null || DOTNET=/opt/homebrew/opt/dotnet@8/bin/dotnet
+
+RID="${1:-}"
+if [ -z "$RID" ]; then
+    [ "$(uname -m)" = "arm64" ] && RID=osx-arm64 || RID=osx-x64
+fi
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+SRC="$SCRIPT_DIR/../XDM"
+OUT="$SCRIPT_DIR/xdm.app"
+MACOS="$OUT/Contents/MacOS"
+RES="$OUT/Contents/Resources"
+
+echo "==> Publishing XDM.Gtk.UI ($RID)"
+# Trimming disabled: GtkSharp relies on reflection and trimming breaks it at runtime
+"$DOTNET" publish "$SRC/XDM.Gtk.UI/XDM.Gtk.UI.csproj" -c Release -r "$RID" \
+    --self-contained -p:PublishTrimmed=false -o "$SCRIPT_DIR/publish-gtk"
+
+echo "==> Publishing XDM.App.Host ($RID)"
+"$DOTNET" publish "$SRC/XDM.App.Host/XDM.App.Host.csproj" -c Release -r "$RID" \
+    --self-contained -p:PublishTrimmed=false -o "$SCRIPT_DIR/publish-apphost"
+
+echo "==> Assembling $OUT"
+rm -rf "$OUT"
+mkdir -p "$MACOS" "$RES"
+cp -r "$SCRIPT_DIR/publish-gtk/." "$MACOS/"
+# Native-messaging host goes in a subdir next to xdm-app (see packaging/packaging.txt)
+mkdir -p "$MACOS/XDM.App.Host"
+cp -r "$SCRIPT_DIR/publish-apphost/." "$MACOS/XDM.App.Host/"
+
+# Launcher: point dlopen at Homebrew's GTK before starting the real binary
+BREW_PREFIX="$( [ "$RID" = "osx-arm64" ] && echo /opt/homebrew || echo /usr/local )"
+cat <<EOF > "$MACOS/xdm"
+#!/bin/bash
+HERE="\$(cd "\$(dirname "\$0")" && pwd)"
+export DYLD_FALLBACK_LIBRARY_PATH="$BREW_PREFIX/lib:\$DYLD_FALLBACK_LIBRARY_PATH"
+export XDG_DATA_DIRS="$BREW_PREFIX/share:\${XDG_DATA_DIRS:-/usr/local/share}"
+# Apps launched from Finder get a minimal PATH without Homebrew, so XDM can't find
+# ffmpeg/yt-dlp. Prepend the Homebrew bin dir (and both arch prefixes) explicitly.
+export PATH="$BREW_PREFIX/bin:/opt/homebrew/bin:/usr/local/bin:\$PATH"
+exec "\$HERE/xdm-app" "\$@"
+EOF
+chmod 755 "$MACOS/xdm" "$MACOS/xdm-app" "$MACOS/XDM.App.Host/xdm-app-host"
+
+# App icon from the bundled 512px logo
+if command -v iconutil >/dev/null; then
+    ICONSET="$SCRIPT_DIR/xdm.iconset"
+    rm -rf "$ICONSET"; mkdir "$ICONSET"
+    for s in 16 32 128 256 512; do
+        sips -z $s $s "$SRC/XDM.Gtk.UI/xdm-logo-512.png" --out "$ICONSET/icon_${s}x${s}.png" >/dev/null
+    done
+    iconutil -c icns "$ICONSET" -o "$RES/xdm.icns"
+    rm -rf "$ICONSET"
+fi
+
+cat <<EOF > "$OUT/Contents/Info.plist"
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleName</key><string>Xtreme Download Manager</string>
+    <key>CFBundleDisplayName</key><string>Xtreme Download Manager</string>
+    <key>CFBundleIdentifier</key><string>io.github.subhra74.xdm</string>
+    <key>CFBundleVersion</key><string>${VERSION}</string>
+    <key>CFBundleShortVersionString</key><string>${VERSION}</string>
+    <key>CFBundleExecutable</key><string>xdm</string>
+    <key>CFBundleIconFile</key><string>xdm</string>
+    <key>CFBundlePackageType</key><string>APPL</string>
+    <key>NSHighResolutionCapable</key><true/>
+    <key>LSMinimumSystemVersion</key><string>11.0</string>
+</dict>
+</plist>
+EOF
+
+# Ad-hoc sign so Gatekeeper on Apple Silicon will run it locally
+codesign --force --deep -s - "$OUT" 2>/dev/null || true
+
+echo "==> Creating xdm-${VERSION}-${RID}.tar.xz"
+tar -C "$SCRIPT_DIR" -cJf "$SCRIPT_DIR/xdm-${VERSION}-${RID}.tar.xz" xdm.app
+
+echo "Done: $OUT"
+echo "Install with: cp -r $OUT /Applications/"
+echo "Runtime dependency: brew install gtk+3 adwaita-icon-theme"

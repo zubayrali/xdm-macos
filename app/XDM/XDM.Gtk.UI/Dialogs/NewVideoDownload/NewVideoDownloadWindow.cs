@@ -58,7 +58,7 @@ namespace XDM.GtkUI.Dialogs.NewVideoDownload
         public static NewVideoDownloadWindow CreateFromGladeFile()
         {
             var builder = new Builder();
-            builder.AddFromFile(IoPath.Combine(AppDomain.CurrentDomain.BaseDirectory, "glade", "new-video-download-window.glade"));
+            builder.AddGladeFile(IoPath.Combine(AppDomain.CurrentDomain.BaseDirectory, "glade", "new-video-download-window.glade"));
             return new NewVideoDownloadWindow(builder);
         }
 
@@ -233,7 +233,8 @@ namespace XDM.GtkUI.Dialogs.NewVideoDownload
 
         public void ShowWindow()
         {
-            this.Show();
+            // Present() also activates the app on macOS; Show() leaves the window buried behind the browser
+            MacUtil.PresentAndActivate(this);
         }
     }
 }

@@ -125,6 +125,7 @@ namespace XDM.GtkUI
         private static void ExceptionManager_UnhandledException(GLib.UnhandledExceptionArgs args)
         {
             Log.Debug("GLib ExceptionManager_UnhandledException: " + args.ExceptionObject);
+            Console.Error.WriteLine("[XDM-UNHANDLED] " + args.ExceptionObject);
             args.ExitApplication = false;
         }
 
@@ -133,7 +134,7 @@ namespace XDM.GtkUI
             Log.Debug("Language loading ...");
             try
             {
-                var indexFile = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"Lang\index.txt");
+                var indexFile = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Lang", "index.txt");
                 if (System.IO.File.Exists(indexFile))
                 {
                     var lines = System.IO.File.ReadAllLines(indexFile);

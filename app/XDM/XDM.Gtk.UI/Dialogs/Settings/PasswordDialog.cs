@@ -92,7 +92,7 @@ namespace XDM.GtkUI.Dialogs.Settings
         public static PasswordDialog CreateFromGladeFile(Window parent, WindowGroup group)
         {
             var builder = new Builder();
-            builder.AddFromFile(IoPath.Combine(AppDomain.CurrentDomain.BaseDirectory, "glade", "password-dialog.glade"));
+            builder.AddGladeFile(IoPath.Combine(AppDomain.CurrentDomain.BaseDirectory, "glade", "password-dialog.glade"));
             return new PasswordDialog(builder, parent, group);
         }
     }

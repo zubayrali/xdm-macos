@@ -48,7 +48,8 @@ namespace XDM.GtkUI.Dialogs.BatchWindow
 
         public void ShowWindow()
         {
-            this.Show();
+            // Present() also activates the app on macOS; Show() leaves the window buried behind the browser
+            MacUtil.PresentAndActivate(this);
         }
 
         public void DestroyWindow()
@@ -204,7 +205,7 @@ namespace XDM.GtkUI.Dialogs.BatchWindow
         public static BatchDownloadWindow CreateFromGladeFile(Window parent)
         {
             var builder = new Builder();
-            builder.AddFromFile(IoPath.Combine(AppDomain.CurrentDomain.BaseDirectory, "glade", "batch-download-dialog.glade"));
+            builder.AddGladeFile(IoPath.Combine(AppDomain.CurrentDomain.BaseDirectory, "glade", "batch-download-dialog.glade"));
             return new BatchDownloadWindow(builder, parent);
         }
     }

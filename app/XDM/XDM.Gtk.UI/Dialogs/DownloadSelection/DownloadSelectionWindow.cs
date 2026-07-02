@@ -62,6 +62,8 @@ namespace XDM.GtkUI.Dialogs.DownloadSelection
         public void ShowWindow()
         {
             ShowAll();
+            // Present() also activates the app on macOS; otherwise the window stays behind the browser
+            MacUtil.PresentAndActivate(this);
         }
 
         private void PrepareMenu()
@@ -227,7 +229,7 @@ namespace XDM.GtkUI.Dialogs.DownloadSelection
         public static DownloadSelectionWindow CreateFromGladeFile()
         {
             var builder = new Builder();
-            builder.AddFromFile(IoPath.Combine(AppDomain.CurrentDomain.BaseDirectory, "glade", "download-selection-window.glade"));
+            builder.AddGladeFile(IoPath.Combine(AppDomain.CurrentDomain.BaseDirectory, "glade", "download-selection-window.glade"));
             return new DownloadSelectionWindow(builder);
         }
     }

@@ -12,6 +12,17 @@ namespace XDM.Tests
         {
         }
 
+        // Sample of the JSON the browser extension sends over native messaging
+        private const string SampleMessageJson = @"{
+            ""messageType"": ""download"",
+            ""message"": {
+                ""url"": ""https://example.com/file.zip"",
+                ""cookies"": { ""session"": ""abc123"" },
+                ""requestHeaders"": { ""User-Agent"": [""Mozilla/5.0""] },
+                ""responseHeaders"": { ""Content-Length"": [""1024""] }
+            }
+        }";
+
         [Test]
         public void DeserializeBrowserMessageJsonSuccess()
         {
@@ -153,7 +164,8 @@ namespace XDM.Tests
 
         private void Test()
         {
-            var reader = new JsonTextReader(new StreamReader(@"C:\Users\subhro\Desktop\message.json"));
+            var parsedMessageType = false;
+            var reader = new JsonTextReader(new StringReader(SampleMessageJson));
             if (reader.Read() && reader.TokenType == JsonToken.StartObject)
             {
                 while (reader.Read())
@@ -164,6 +176,7 @@ namespace XDM.Tests
                     if (messageType != null)
                     {
                         Console.WriteLine("messageType: {0}", messageType);
+                        parsedMessageType = true;
                     }
                     if (IsObjectStart(reader, "message"))
                     {
@@ -183,6 +196,7 @@ namespace XDM.Tests
                     SkipUnknownParts(reader);
                 }
             }
+            Assert.IsTrue(parsedMessageType, "messageType was not parsed from browser message JSON");
         }
     }
 }

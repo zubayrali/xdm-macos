@@ -85,7 +85,7 @@ namespace XDM.GtkUI.Dialogs.Updater
         public static UpdaterWindow CreateFromGladeFile()
         {
             var builder = new Builder();
-            builder.AddFromFile(IoPath.Combine(AppDomain.CurrentDomain.BaseDirectory, "glade", "updater-window.glade"));
+            builder.AddGladeFile(IoPath.Combine(AppDomain.CurrentDomain.BaseDirectory, "glade", "updater-window.glade"));
             return new UpdaterWindow(builder);
         }
 

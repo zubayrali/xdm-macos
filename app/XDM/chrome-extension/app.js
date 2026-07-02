@@ -22,9 +22,21 @@ export default class App {
 
     start() {
         this.logger.log("starting...");
+        // Restore the user's monitoring on/off choice (survives service-worker restarts)
+        try {
+            chrome.storage.local.get(["userDisabled"], data => {
+                this.userDisabled = data && data.userDisabled === true;
+                this.updateActionIcon();
+            });
+        } catch (e) { this.logger.log(e); }
         this.starAppConnector();
         this.register();
         this.logger.log("started.");
+    }
+
+    persistDisabled() {
+        try { chrome.storage.local.set({ userDisabled: this.userDisabled }); }
+        catch (e) { this.logger.log(e); }
     }
 
     starAppConnector() {
@@ -98,17 +110,17 @@ export default class App {
             return;
         }
         if (changeInfo.title) {
-            if (this.tabsWatcher &&
-                this.tabsWatcher.find(t => tab.url.indexOf(t) > 0)) {
-                this.logger.log("Tab changed: " + changeInfo.title + " => " + tab.url);
-                try {
-                    this.connector.postMessage("/tab-update", {
-                        tabUrl: tab.url,
-                        tabTitle: changeInfo.title
-                    });
-                } catch (ex) {
-                    console.log(ex);
-                }
+            // Forward the page title for ALL sites, not just youtube. Many sites set
+            // the real <title> after the video manifest has already loaded, so this
+            // lets XDM rename a captured video once the proper title appears.
+            this.logger.log("Tab changed: " + changeInfo.title + " => " + tab.url);
+            try {
+                this.connector.postMessage("/tab-update", {
+                    tabUrl: tab.url,
+                    tabTitle: changeInfo.title
+                });
+            } catch (ex) {
+                console.log(ex);
             }
         }
     }
@@ -127,6 +139,16 @@ export default class App {
         this.requestWatcher.register();
         this.attachContextMenu();
         chrome.tabs.onActivated.addListener(this.onTabActivated.bind(this));
+        // Keyboard shortcut (Cmd/Ctrl+Shift+E) to toggle monitoring on/off
+        if (chrome.commands && chrome.commands.onCommand) {
+            chrome.commands.onCommand.addListener(command => {
+                if (command !== "toggle-monitoring") return;
+                this.userDisabled = !this.userDisabled;
+                this.persistDisabled();
+                this.updateActionIcon();
+                this.logger.log("toggle-monitoring -> userDisabled=" + this.userDisabled);
+            });
+        }
     }
 
     isSupportedProtocol(url) {
@@ -261,12 +283,16 @@ export default class App {
         }
         else if (request.type === "cmd") {
             this.userDisabled = request.enabled === false;
+            this.persistDisabled();
             this.logger.log("request.enabled:" + request.enabled);
             if (request.enabled && !this.connector.isConnected()) {
                 this.connector.launchApp();
                 return;
             }
             this.updateActionIcon();
+        }
+        else if (request.type === "links") {
+            this.sendBatchLinks(request.links);
         }
         else if (request.type === "vid") {
             let vid = request.itemId;
@@ -313,19 +339,68 @@ export default class App {
         if (info.menuItemId == "download-image-link") {
             this.sendImageToXDM(info, tab);
         }
+        if (info.menuItemId == "download-all-links") {
+            this.downloadAllLinks(tab);
+        }
+    }
+
+    downloadAllLinks(tab) {
+        if (!tab || tab.id == null) return;
+        // Inject a content script that gathers every link on the page; it posts them
+        // back as a {type:"links"} message which we forward to XDM as a batch.
+        chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            files: ['contentscript.js']
+        }).catch(e => this.logger.log(e));
+    }
+
+    // Forward a list of URLs to XDM's batch endpoint, which opens a single selection
+    // window listing them all (better UX than one dialog per link).
+    sendBatchLinks(links) {
+        if (!Array.isArray(links) || links.length === 0) return;
+        if (!this.isMonitoringEnabled() || !this.connector.isConnected()) return;
+        const seen = new Set();
+        const batch = [];
+        for (const url of links) {
+            if (!url || !this.isSupportedProtocol(url)) continue;
+            const u = (url + "").trim();
+            if (!u || seen.has(u)) continue;
+            seen.add(u);
+            batch.push({
+                url: u,
+                method: "GET",
+                requestHeaders: { "User-Agent": [navigator.userAgent] },
+                responseHeaders: {},
+                cookie: undefined
+            });
+            if (batch.length >= 500) break;
+        }
+        if (batch.length > 0) {
+            this.connector.postMessage("/link", batch);
+        }
     }
 
     attachContextMenu() {
-        chrome.contextMenus.create({
-            id: 'download-any-link',
-            title: "Download with XDM",
-            contexts: ["link", "video", "audio", "all"]
-        });
+        // removeAll first so re-registration on service-worker wake doesn't throw
+        // "duplicate id" errors (the menus are otherwise recreated every restart).
+        chrome.contextMenus.removeAll(() => {
+            chrome.contextMenus.create({
+                id: 'download-any-link',
+                title: "Download with XDM",
+                contexts: ["link", "video", "audio"]
+            });
 
-        chrome.contextMenus.create({
-            id: 'download-image-link',
-            title: "Download Image with XDM",
-            contexts: ["image"]
+            chrome.contextMenus.create({
+                id: 'download-image-link',
+                title: "Download Image with XDM",
+                contexts: ["image"]
+            });
+
+            chrome.contextMenus.create({
+                id: 'download-all-links',
+                title: "Download all links",
+                contexts: ["all"]
+            });
         });
 
         chrome.contextMenus.onClicked.addListener(this.onMenuClicked.bind(this));

@@ -2,8 +2,9 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net4.7.2</TargetFramework>
-    <!--<TargetFrameworks>net4.6.0;net6.0</TargetFrameworks>-->
+    <!-- net4.7.2 on Windows (small self-contained-free exe), net8.0 elsewhere (mac/linux can't build net4.x) -->
+    <TargetFramework Condition="'$(OS)' == 'Windows_NT'">net4.7.2</TargetFramework>
+    <TargetFramework Condition="'$(OS)' != 'Windows_NT'">net8.0</TargetFramework>
     <PublishTrimmed>true</PublishTrimmed>
     <TrimMode>Link</TrimMode>
     <LangVersion>9.0</LangVersion>

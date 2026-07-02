@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Data.SQLite;
+using Microsoft.Data.Sqlite;
 using System.IO;
 using TraceLog;
 
@@ -7,18 +7,14 @@ namespace XDM.Core.DataAccess
 {
     public static class DataImportExport
     {
-        public static bool CopyToFile(SQLiteConnection sql, string file)
+        public static bool CopyToFile(SqliteConnection sql, string file)
         {
             try
             {
-                var cs = $"URI=file:{file}";
-                if (!File.Exists(file))
-                {
-                    SQLiteConnection.CreateFile(file);
-                }
-                using var dest = new SQLiteConnection(cs);
+                var cs = $"Data Source={file}";
+                using var dest = new SqliteConnection(cs);
                 dest.Open();
-                sql.BackupDatabase(dest, "main", "main", -1, null, 0);
+                sql.BackupDatabase(dest, "main", "main");
                 return true;
             }
             catch (Exception ex)
@@ -28,16 +24,16 @@ namespace XDM.Core.DataAccess
             }
         }
 
-        public static bool CopyFromFile(SQLiteConnection sql, string file)
+        public static bool CopyFromFile(SqliteConnection sql, string file)
         {
             try
             {
-                using var attachCmd = new SQLiteCommand($"ATTACH '{file}' as db", sql);
+                using var attachCmd = new SqliteCommand($"ATTACH '{file}' as db", sql);
                 attachCmd.ExecuteNonQuery();
                 var tx = sql.BeginTransaction();
                 try
                 {
-                    using var mergeCmd = new SQLiteCommand($"INSERT OR IGNORE INTO downloads SELECT * FROM db.downloads", sql);
+                    using var mergeCmd = new SqliteCommand($"INSERT OR IGNORE INTO downloads SELECT * FROM db.downloads", sql, tx);
                     mergeCmd.ExecuteNonQuery();
                     tx.Commit();
                 }
@@ -47,7 +43,7 @@ namespace XDM.Core.DataAccess
                     Log.Debug("Error during merge insert, performing rollback!!");
                     Log.Debug(ex, ex.Message);
                 }
-                using var detachCmd = new SQLiteCommand($"DETACH db", sql);
+                using var detachCmd = new SqliteCommand($"DETACH db", sql);
                 detachCmd.ExecuteNonQuery();
                 return true;
             }

@@ -51,20 +51,20 @@ namespace XDM.GtkUI.Dialogs.AdvancedDownload
 
         //static AdvancedDownloadDialog()
         //{
-        //    builder.AddFromFile(IoPath.Combine(AppDomain.CurrentDomain.BaseDirectory, "glade", "advanced-download-dialog.glade"));
+        //    builder.AddGladeFile(IoPath.Combine(AppDomain.CurrentDomain.BaseDirectory, "glade", "advanced-download-dialog.glade"));
         //}
 
         //public static Builder LoadBuilder()
         //{
         //    var builder = new Builder();
-        //    builder.AddFromFile(IoPath.Combine(AppDomain.CurrentDomain.BaseDirectory, "glade", "advanced-download-dialog.glade"));
+        //    builder.AddGladeFile(IoPath.Combine(AppDomain.CurrentDomain.BaseDirectory, "glade", "advanced-download-dialog.glade"));
         //    return builder;
         //}
 
         public static AdvancedDownloadDialog CreateFromGladeFile(Window parent, WindowGroup group)
         {
             var builder = new Builder();
-            builder.AddFromFile(IoPath.Combine(AppDomain.CurrentDomain.BaseDirectory, "glade", "advanced-download-dialog.glade"));
+            builder.AddGladeFile(IoPath.Combine(AppDomain.CurrentDomain.BaseDirectory, "glade", "advanced-download-dialog.glade"));
             return new AdvancedDownloadDialog(builder, parent, group);
         }
 

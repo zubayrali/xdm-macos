@@ -38,7 +38,8 @@ namespace XDM.GtkUI.Dialogs.LinkRefresh
 
         public void ShowWindow()
         {
-            this.ShowAll();
+            // Present() also activates the app on macOS; Show() leaves the window buried behind the browser
+            MacUtil.PresentAndActivate(this);
         }
 
         private LinkRefreshWindow(Builder builder) : base(builder.GetRawOwnedObject("window"))
@@ -79,7 +80,7 @@ namespace XDM.GtkUI.Dialogs.LinkRefresh
         public static LinkRefreshWindow CreateFromGladeFile()
         {
             var builder = new Builder();
-            builder.AddFromFile(IoPath.Combine(AppDomain.CurrentDomain.BaseDirectory, "glade", "link-refresh-window.glade"));
+            builder.AddGladeFile(IoPath.Combine(AppDomain.CurrentDomain.BaseDirectory, "glade", "link-refresh-window.glade"));
             return new LinkRefreshWindow(builder);
         }
     }

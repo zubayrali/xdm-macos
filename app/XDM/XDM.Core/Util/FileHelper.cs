@@ -12,12 +12,28 @@ namespace XDM.Core.Util
     public static class FileHelper
     {
         public static readonly Regex RxFileWithinQuote = new Regex("\\\"(.*)\\\"");
+        // Common suffixes video sites append to the page <title>, e.g. "My Video - YouTube".
+        private static readonly Regex RxSiteSuffix = new Regex(
+            @"\s*[-|–—•·]\s*(YouTube|Vimeo|Dailymotion|Twitch|Facebook|Wistia|Twitter|X|TikTok|Reddit|Bilibili)\s*$",
+            RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
         public static string? SanitizeFileName(string fileName)
         {
             if (fileName == null) return fileName;
-            var file = fileName.Split('/').Last();
-            file = fileName.Split('\\').Last();
-            return string.Join("_", file.Split(Path.GetInvalidFileNameChars()));
+            // Take the last path segment regardless of separator style.
+            var file = fileName.Split('/').Last().Split('\\').Last();
+            // Drop a trailing " - SiteName" that streaming sites add to the tab title.
+            file = RxSiteSuffix.Replace(file, string.Empty);
+            // Replace filesystem-invalid characters with spaces, then collapse runs of
+            // whitespace/underscores so titles don't become "My___Video".
+            file = string.Join(" ", file.Split(Path.GetInvalidFileNameChars()));
+            file = Regex.Replace(file, @"[\s_]+", " ").Trim();
+            // Trim leading/trailing dots and spaces that break some filesystems.
+            file = file.Trim('.', ' ');
+            if (string.IsNullOrEmpty(file)) return "download";
+            // Cap length so very long titles don't exceed filesystem limits (leave room for extension).
+            if (file.Length > 150) file = file.Substring(0, 150).Trim();
+            return file;
         }
 
         public static string GetDownloadFolderByFileName(string file)

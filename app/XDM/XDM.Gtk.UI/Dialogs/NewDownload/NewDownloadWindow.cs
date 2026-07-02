@@ -49,7 +49,7 @@ namespace XDM.GtkUI.Dialogs.NewDownload
         public static NewDownloadWindow CreateFromGladeFile()
         {
             var builder = new Builder();
-            builder.AddFromFile(IoPath.Combine(AppDomain.CurrentDomain.BaseDirectory, "glade", "new-download-window.glade"));
+            builder.AddGladeFile(IoPath.Combine(AppDomain.CurrentDomain.BaseDirectory, "glade", "new-download-window.glade"));
             return new NewDownloadWindow(builder);
         }
 
@@ -175,7 +175,8 @@ namespace XDM.GtkUI.Dialogs.NewDownload
 
         public void ShowWindow()
         {
-            this.Show();
+            // Present() also activates the app on macOS; Show() leaves the window buried behind the browser
+            MacUtil.PresentAndActivate(this);
         }
 
         private void CmbLocation_Changed(object? sender, EventArgs e)

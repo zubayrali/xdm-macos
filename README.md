@@ -39,10 +39,16 @@ XDM seamlessly integrates with Google Chrome, Mozilla Firefox Quantum, Opera, Vi
 - Works with Windows ISA, auto proxy scripts, proxy servers, NTLM, Kerberos authentication.
 
 ## Building from source
+
+This is a C#/.NET solution (the old Maven/Java instructions applied to XDM 7.x and are obsolete).
+See [docs/CODEBASE.md](docs/CODEBASE.md) for the full guide. Quick start on macOS/Linux:
+
 <pre>
-This is a standard maven project.
-If you have configured Java and Maven use: <b>mvn clean install</b> to build the project.
-The jar will be created in target directory.
+brew install dotnet@8 gtk+3 adwaita-icon-theme   # macOS
+cd app/XDM
+dotnet build XDM.Gtk.UI/XDM.Gtk.UI.csproj -c Release
+dotnet test XDM.Tests/XDM.Tests.csproj
+../packaging/make-macos-app                       # builds installable xdm.app
 </pre>
 
 ## Submitting translations

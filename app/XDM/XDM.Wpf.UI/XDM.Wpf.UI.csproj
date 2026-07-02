@@ -83,7 +83,7 @@
   <ItemGroup>
     <!--<PackageReference Include="Microsoft.Windows.Compatibility" Version="5.0.2" />-->
     <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
-    <PackageReference Include="System.Data.SQLite.Core" Version="1.0.116" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.10" />
   </ItemGroup>
 
   <PropertyGroup>

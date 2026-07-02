@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Data.SQLite;
+using Microsoft.Data.Sqlite;
 using System.Linq;
 using System.Text;
 
@@ -8,7 +8,7 @@ namespace XDM.Core.DataAccess
 {
     public static class SchemaInitializer
     {
-        private static void CreateTablesIfNotExists(SQLiteConnection c)
+        private static void CreateTablesIfNotExists(SqliteConnection c)
         {
             var query = @"CREATE TABLE IF NOT EXISTS downloads(
                                             id TEXT PRIMARY KEY,
@@ -34,12 +34,12 @@ namespace XDM.Core.DataAccess
                                             proxy_pass TEXT,
                                             proxy_type INT
                                         ) WITHOUT ROWID";
-            using var cmd = new SQLiteCommand(c);
+            using var cmd = c.CreateCommand();
             cmd.CommandText = query;
             cmd.ExecuteNonQuery();
         }
 
-        public static void Init(SQLiteConnection c)
+        public static void Init(SqliteConnection c)
         {
             CreateTablesIfNotExists(c);
         }

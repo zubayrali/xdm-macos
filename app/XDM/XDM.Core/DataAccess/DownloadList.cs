@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data.Common;
-using System.Data.SQLite;
+using Microsoft.Data.Sqlite;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -14,14 +14,14 @@ namespace XDM.Core.DataAccess
 {
     public class DownloadList
     {
-        private SQLiteConnection db;
+        private SqliteConnection db;
 
-        public DownloadList(SQLiteConnection db)
+        public DownloadList(SqliteConnection db)
         {
             this.db = db;
         }
 
-        private SQLiteCommand cmdFetchAll, cmdFetchConditional, cmdFetchOne, cmdUpdateProgress, cmdUpdateTargetDir,
+        private SqliteCommand cmdFetchAll, cmdFetchConditional, cmdFetchOne, cmdUpdateProgress, cmdUpdateTargetDir,
             cmdInsertOne, cmdMarkFinished, cmdUpdateStatus, cmdUpdateNameAndSize, cmdUpdateNameAndFolder, cmdUpdateOne, cmdDelete;
 
         public bool LoadDownloads(
@@ -34,12 +34,12 @@ namespace XDM.Core.DataAccess
                 finishedDownloads = new List<FinishedDownloadItem>();
                 try
                 {
-                    SQLiteCommand sqlCommand;
+                    SqliteCommand sqlCommand;
                     if (queryMode == QueryMode.All)
                     {
                         if (cmdFetchAll == null)
                         {
-                            cmdFetchAll = new SQLiteCommand("SELECT * FROM downloads", db);
+                            cmdFetchAll = new SqliteCommand("SELECT * FROM downloads", db);
                         }
                         sqlCommand = cmdFetchAll;
                     }
@@ -47,12 +47,12 @@ namespace XDM.Core.DataAccess
                     {
                         if (cmdFetchConditional == null)
                         {
-                            cmdFetchConditional = new SQLiteCommand("SELECT * FROM downloads WHERE completed=@completed", db);
+                            cmdFetchConditional = new SqliteCommand("SELECT * FROM downloads WHERE completed=@completed", db);
                         }
                         SetParam("@completed", queryMode == QueryMode.InProgress ? 0 : 1, cmdFetchConditional.Parameters);
                         sqlCommand = cmdFetchConditional;
                     }
-                    using SQLiteDataReader r = sqlCommand.ExecuteReader();
+                    using SqliteDataReader r = sqlCommand.ExecuteReader();
                     while (r.Read())
                     {
                         var id = r.GetSafeString(0);
@@ -119,11 +119,11 @@ namespace XDM.Core.DataAccess
                 {
                     if (cmdFetchOne == null)
                     {
-                        cmdFetchOne = new SQLiteCommand("SELECT * FROM downloads WHERE id=@id", db);
+                        cmdFetchOne = new SqliteCommand("SELECT * FROM downloads WHERE id=@id", db);
                     }
                     SetParam("@id", id, cmdFetchOne.Parameters);
                     //cmdFetchOne.Parameters["@id"].Value = id;
-                    using SQLiteDataReader r = cmdFetchOne.ExecuteReader();
+                    using SqliteDataReader r = cmdFetchOne.ExecuteReader();
                     if (r.Read())
                     {
                         var inProgress = r.GetInt32(1) == 0;
@@ -184,7 +184,7 @@ namespace XDM.Core.DataAccess
                 {
                     if (cmdInsertOne == null)
                     {
-                        cmdInsertOne = new SQLiteCommand(@"INSERT INTO downloads(
+                        cmdInsertOne = new SqliteCommand(@"INSERT INTO downloads(
                                             id, completed, name, date_added, size, status, 
                                             progress, download_type, filenamefetchmode, maxspeedlimitinkib, targetdir, primary_url,
                                             referer_url, auth, user, pass, proxy, proxy_host,
@@ -236,7 +236,7 @@ namespace XDM.Core.DataAccess
                 {
                     if (cmdUpdateOne == null)
                     {
-                        cmdUpdateOne = new SQLiteCommand(@"UPDATE downloads SET name=@name, date_added=@date_added, size=@size, 
+                        cmdUpdateOne = new SqliteCommand(@"UPDATE downloads SET name=@name, date_added=@date_added, size=@size, 
                                             download_type=@download_type, targetdir=@targetdir, primary_url=@primary_url,
                                             auth=@auth, user=@user, pass=@pass, proxy=@proxy, proxy_host=@proxy_host,
                                             proxy_port=@proxy_port, proxy_user=@proxy_user, proxy_pass=@proxy_pass, 
@@ -277,7 +277,7 @@ namespace XDM.Core.DataAccess
                 {
                     if (cmdUpdateProgress == null)
                     {
-                        cmdUpdateProgress = new SQLiteCommand("UPDATE downloads SET progress=@progress WHERE id=@id", db);
+                        cmdUpdateProgress = new SqliteCommand("UPDATE downloads SET progress=@progress WHERE id=@id", db);
                     }
                     SetParam("@progress", progress, cmdUpdateProgress.Parameters);
                     SetParam("@id", id, cmdUpdateProgress.Parameters);
@@ -302,7 +302,7 @@ namespace XDM.Core.DataAccess
                 {
                     if (cmdUpdateTargetDir == null)
                     {
-                        cmdUpdateTargetDir = new SQLiteCommand("UPDATE downloads SET targetdir=@targetdir WHERE id=@id", db);
+                        cmdUpdateTargetDir = new SqliteCommand("UPDATE downloads SET targetdir=@targetdir WHERE id=@id", db);
                     }
                     SetParam("@targetdir", folder, cmdUpdateTargetDir.Parameters);
                     SetParam("@id", id, cmdUpdateTargetDir.Parameters);
@@ -319,14 +319,16 @@ namespace XDM.Core.DataAccess
             }
         }
 
-        private void SetParam<T>(string name, T value, SQLiteParameterCollection param)
+        private void SetParam<T>(string name, T value, SqliteParameterCollection param)
         {
+            // Microsoft.Data.Sqlite rejects null parameter values; map them to DBNull
+            object boxed = value ?? (object)DBNull.Value;
             if (!param.Contains(name))
             {
-                param.AddWithValue(name, value);
+                param.AddWithValue(name, boxed);
                 return;
             }
-            param[name].Value = value;
+            param[name].Value = boxed;
         }
 
         public bool MarkAsFinished(string id, long finalFileSize, string file, string folder)
@@ -337,7 +339,7 @@ namespace XDM.Core.DataAccess
                 {
                     if (cmdMarkFinished == null)
                     {
-                        cmdMarkFinished = new SQLiteCommand("UPDATE downloads SET targetdir=@targetdir, name=@name, " +
+                        cmdMarkFinished = new SqliteCommand("UPDATE downloads SET targetdir=@targetdir, name=@name, " +
                             "size=@finalFileSize, completed=@completed WHERE id=@id", db);
                     }
                     SetParam("@targetdir", folder, cmdMarkFinished.Parameters);
@@ -364,7 +366,7 @@ namespace XDM.Core.DataAccess
                 {
                     if (cmdUpdateStatus == null)
                     {
-                        cmdUpdateStatus = new SQLiteCommand("UPDATE downloads SET status=@status WHERE id=@id", db);
+                        cmdUpdateStatus = new SqliteCommand("UPDATE downloads SET status=@status WHERE id=@id", db);
                     }
                     SetParam("@status", (int)status, cmdUpdateStatus.Parameters);
                     SetParam("@id", id, cmdUpdateStatus.Parameters);
@@ -387,7 +389,7 @@ namespace XDM.Core.DataAccess
                 {
                     if (cmdUpdateNameAndSize == null)
                     {
-                        cmdUpdateNameAndSize = new SQLiteCommand("UPDATE downloads SET name=@name, size=@size WHERE id=@id", db);
+                        cmdUpdateNameAndSize = new SqliteCommand("UPDATE downloads SET name=@name, size=@size WHERE id=@id", db);
                     }
                     SetParam("@id", id, cmdUpdateNameAndSize.Parameters);
                     SetParam("@name", name, cmdUpdateNameAndSize.Parameters);
@@ -411,7 +413,7 @@ namespace XDM.Core.DataAccess
                 {
                     if (cmdUpdateNameAndFolder == null)
                     {
-                        cmdUpdateNameAndFolder = new SQLiteCommand("UPDATE downloads SET name=@name, targetdir=@targetdir WHERE id=@id", db);
+                        cmdUpdateNameAndFolder = new SqliteCommand("UPDATE downloads SET name=@name, targetdir=@targetdir WHERE id=@id", db);
                     }
                     SetParam("@name", name, cmdUpdateNameAndFolder.Parameters);
                     SetParam("@targetdir", folder, cmdUpdateNameAndFolder.Parameters);
@@ -433,7 +435,7 @@ namespace XDM.Core.DataAccess
             {
                 try
                 {
-                    using var cmdClearAllFinished = new SQLiteCommand("DELETE FROM downloads WHERE completed=1", db);
+                    using var cmdClearAllFinished = new SqliteCommand("DELETE FROM downloads WHERE completed=1", db);
                     cmdClearAllFinished.ExecuteNonQuery();
                     return true;
                 }
@@ -453,7 +455,7 @@ namespace XDM.Core.DataAccess
                 {
                     if (cmdDelete == null)
                     {
-                        cmdDelete = new SQLiteCommand("DELETE FROM downloads WHERE id=@id", db);
+                        cmdDelete = new SqliteCommand("DELETE FROM downloads WHERE id=@id", db);
                     }
                     SetParam("@id", id, cmdDelete.Parameters);
                     cmdDelete.ExecuteNonQuery();

@@ -371,7 +371,8 @@ namespace XDM.Core.BrowserMonitoring
                             {
                                 Quality = displayText,
                                 CreationTime = DateTime.Now,
-                                TabId = message.TabId
+                                TabId = message.TabId,
+                                TabUrl = message.TabUrl
                             }, video);
                         }
                     }
@@ -400,7 +401,8 @@ namespace XDM.Core.BrowserMonitoring
                     {
                         Quality = displayText,
                         CreationTime = DateTime.Now,
-                        TabId = message.TabId
+                        TabId = message.TabId,
+                        TabUrl = message.TabUrl
                     }, video);
                 }
             }

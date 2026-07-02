@@ -165,7 +165,7 @@ namespace XDM.GtkUI.Dialogs.MediaGrabber
         public static MediaGrabberWindow CreateFromGladeFile()
         {
             var builder = new Builder();
-            builder.AddFromFile(IoPath.Combine(AppDomain.CurrentDomain.BaseDirectory, "glade", "media-grabber.glade"));
+            builder.AddGladeFile(IoPath.Combine(AppDomain.CurrentDomain.BaseDirectory, "glade", "media-grabber.glade"));
             return new MediaGrabberWindow(builder);
         }
     }

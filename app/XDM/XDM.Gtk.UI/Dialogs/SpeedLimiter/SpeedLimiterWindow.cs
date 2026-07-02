@@ -24,7 +24,7 @@ namespace XDM.GtkUI.Dialogs.SpeedLimiter
         public static SpeedLimiterWindow CreateFromGladeFile()
         {
             var builder = new Builder();
-            builder.AddFromFile(IoPath.Combine(AppDomain.CurrentDomain.BaseDirectory, "glade", "speed-limiter-dialog.glade"));
+            builder.AddGladeFile(IoPath.Combine(AppDomain.CurrentDomain.BaseDirectory, "glade", "speed-limiter-dialog.glade"));
             return new SpeedLimiterWindow(builder);
         }
 
@@ -89,7 +89,8 @@ namespace XDM.GtkUI.Dialogs.SpeedLimiter
 
         public void ShowWindow()
         {
-            this.ShowAll();
+            // Present() also activates the app on macOS; Show() leaves the window buried behind the browser
+            MacUtil.PresentAndActivate(this);
         }
     }
 }

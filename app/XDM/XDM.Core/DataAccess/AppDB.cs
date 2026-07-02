@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data.Common;
-using System.Data.SQLite;
+using Microsoft.Data.Sqlite;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -15,7 +15,7 @@ namespace XDM.Core.DataAccess
     {
         private static object lockObj = new();
         private bool init = false;
-        private SQLiteConnection db;
+        private SqliteConnection db;
         private AppDB() { }
         private DownloadList downloadsDB;
         public DownloadList Downloads => downloadsDB;
@@ -41,12 +41,8 @@ namespace XDM.Core.DataAccess
             {
                 try
                 {
-                    string cs = $"URI=file:{file}";
-                    if (!File.Exists(file))
-                    {
-                        SQLiteConnection.CreateFile(file);
-                    }
-                    db = new SQLiteConnection(cs);
+                    string cs = $"Data Source={file}";
+                    db = new SqliteConnection(cs);
                     db.Open();
                     SchemaInitializer.Init(db);
                     this.downloadsDB = new DownloadList(db);

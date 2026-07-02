@@ -107,7 +107,7 @@ namespace XDM.GtkUI.Dialogs.Settings
         public static CategoryEditDialog CreateFromGladeFile(Window parent, WindowGroup group)
         {
             var builder = new Builder();
-            builder.AddFromFile(IoPath.Combine(AppDomain.CurrentDomain.BaseDirectory, "glade", "category-edit-dialog.glade"));
+            builder.AddGladeFile(IoPath.Combine(AppDomain.CurrentDomain.BaseDirectory, "glade", "category-edit-dialog.glade"));
             return new CategoryEditDialog(builder, parent, group);
         }
     }

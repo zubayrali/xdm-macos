@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Data.SQLite;
+using Microsoft.Data.Sqlite;
 using System.Linq;
 using System.Text;
 
@@ -8,7 +8,7 @@ namespace XDM.Core.DataAccess.Extensions
 {
     public static class DataReaderExtensions
     {
-        public static string GetSafeString(this SQLiteDataReader r, int index)
+        public static string GetSafeString(this SqliteDataReader r, int index)
         {
             if (!r.IsDBNull(index))
             {

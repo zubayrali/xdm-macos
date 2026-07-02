@@ -50,7 +50,7 @@ namespace XDM.GtkUI.Dialogs.About
         public static AboutDialog CreateFromGladeFile(Window parent, WindowGroup group)
         {
             var builder = new Builder();
-            builder.AddFromFile(IoPath.Combine(AppDomain.CurrentDomain.BaseDirectory, "glade", "about-dialog.glade"));
+            builder.AddGladeFile(IoPath.Combine(AppDomain.CurrentDomain.BaseDirectory, "glade", "about-dialog.glade"));
             return new AboutDialog(builder, parent, group);
         }
     }
