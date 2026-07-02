@@ -20,12 +20,13 @@ namespace XDM.GtkUI
         static void Main(string[] args)
         {
             Config.LoadConfig();
-            var debugMode = Environment.GetEnvironmentVariable("XDM_DEBUG_MODE");
-            if (!string.IsNullOrEmpty(debugMode) && debugMode == "1")
+            // Log to the writable data dir (~/.xdm-app-data) — AppDir is inside the
+            // read-only .app bundle on macOS, so logging there silently no-ops.
+            try
             {
-                var logFile = System.IO.Path.Combine(Config.AppDir, "log.txt");
-                Log.InitFileBasedTrace(System.IO.Path.Combine(Config.AppDir, "log.txt"));
+                Log.InitFileBasedTrace(System.IO.Path.Combine(Config.DataDir, "log.txt"));
             }
+            catch { /* logging is best-effort */ }
             Log.Debug("Application_Startup");
             Environment.SetEnvironmentVariable("GTK_USE_PORTAL", "1");
             Gtk.Application.Init("xdm-app", ref args);

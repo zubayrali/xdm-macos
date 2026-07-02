@@ -172,7 +172,22 @@ namespace YDLWrapper
                     binPath = path;
                     break;
                 }
+                // GUI apps launched from Finder don't inherit the shell PATH, so
+                // FindExecutableFromSystemPath can miss Homebrew's yt-dlp. Check the
+                // common install locations explicitly (macOS/Linux).
+                foreach (var dir in new[] { "/opt/homebrew/bin", "/usr/local/bin", "/usr/bin" })
+                {
+                    path = Path.Combine(dir, executableName);
+                    if (File.Exists(path))
+                    {
+                        found = true;
+                        binPath = path;
+                        break;
+                    }
+                }
+                if (found) break;
             }
+            Log.Debug("[ydl] binary resolved: " + (binPath ?? "NOT FOUND"));
             if (found)
             {
                 return new YtBinary { BinaryType = GetYtBinaryType(execName!), Path = binPath! };

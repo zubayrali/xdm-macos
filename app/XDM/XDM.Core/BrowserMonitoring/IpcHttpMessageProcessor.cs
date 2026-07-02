@@ -104,9 +104,11 @@ namespace XDM.Core.BrowserMonitoring
             {
                 return;
             }
+            Log.Debug("[/ydl] received embed urls: " + string.Join(", ", msg.Urls));
             // ponytail: take the first embed; LMS lesson pages carry one video. Multiple
             // embeds -> loop and open one window each if that ever matters.
             var url = msg.Urls[0];
+            Log.Debug("[/ydl] opening yt-dlp dialog for: " + url);
             ApplicationContext.Application.RunOnUiThread(() =>
                 ApplicationContext.PlatformUIService.ShowYoutubeDLDialog(url, true));
         }

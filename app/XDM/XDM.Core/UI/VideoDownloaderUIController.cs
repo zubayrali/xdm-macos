@@ -105,12 +105,14 @@ namespace XDM.Core.UI
             {
                 browsers.TryGetValue(view.SelectedBrowser!, out browser);
             }
+            Log.Debug("[ydl] StartSearch url=" + url + " valid=" + Helpers.IsUriValid(url));
             if (Helpers.IsUriValid(url))
             {
                 view.SwitchToProcessingPage();
                 ProcessVideo(url, browser, result => ApplicationContext.Application.RunOnUiThread(() =>
                 {
-                    if (result != null)
+                    Log.Debug("[ydl] yt-dlp result count=" + (result?.Count.ToString() ?? "null"));
+                    if (result != null && result.Count > 0)
                     {
                         view.SwitchToFinalPage();
                         SetVideoResultList(result);
