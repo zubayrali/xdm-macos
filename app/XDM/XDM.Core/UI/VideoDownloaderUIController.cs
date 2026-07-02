@@ -116,6 +116,9 @@ namespace XDM.Core.UI
                     {
                         view.SwitchToFinalPage();
                         SetVideoResultList(result);
+                        // Also surface the resolved video(s) in the browser extension popup
+                        // (the desktop window above still opens). Both surfaces, one resolve.
+                        PublishToBrowserPopup(result);
                     }
                     else
                     {
@@ -366,6 +369,65 @@ namespace XDM.Core.UI
                         false
                     );
             }
+        }
+
+        // Feed the yt-dlp-resolved videos into the CapturedVideoTracker so they appear as
+        // rows in the browser extension popup too (BroadcastConfigChange -> /sync push).
+        // We publish one row per video at its best resolution; clicking it in the popup
+        // routes through the normal AddVideoDownload path (dialog or auto-start).
+        private void PublishToBrowserPopup(List<YDLVideoEntry> results)
+        {
+            foreach (var entry in results)
+            {
+                if (entry.Formats == null || entry.Formats.Count == 0) continue;
+                var fmt = BestFormat(entry);
+                var file = (string.IsNullOrEmpty(entry.Title) ? "video" : entry.Title)
+                    + (string.IsNullOrEmpty(fmt.FileExt) ? "" : "." + fmt.FileExt);
+                var display = new StreamingVideoDisplayInfo
+                {
+                    Quality = string.IsNullOrEmpty(fmt.Height) ? "" : fmt.Height + "p",
+                    CreationTime = DateTime.Now
+                };
+                switch (fmt.YDLEntryType)
+                {
+                    case YDLEntryType.Http:
+                        ApplicationContext.VideoTracker.AddVideoNotification(display,
+                            new SingleSourceHTTPDownloadInfo { File = file, Uri = fmt.VideoUrl });
+                        break;
+                    case YDLEntryType.Dash:
+                        ApplicationContext.VideoTracker.AddVideoNotification(display,
+                            new DualSourceHTTPDownloadInfo { File = file, Uri1 = fmt.VideoUrl, Uri2 = fmt.AudioUrl });
+                        break;
+                    case YDLEntryType.Hls:
+                        ApplicationContext.VideoTracker.AddVideoNotification(display,
+                            new MultiSourceHLSDownloadInfo { File = file, VideoUri = fmt.VideoUrl, AudioUri = fmt.AudioUrl });
+                        break;
+                    case YDLEntryType.MpegDash:
+                        ApplicationContext.VideoTracker.AddVideoNotification(display,
+                            new MultiSourceDASHDownloadInfo
+                            {
+                                File = file,
+                                Url = fmt.VideoUrl,
+                                VideoSegments = fmt.VideoFragments?.Select(x => new Uri(new Uri(fmt.FragmentBaseUrl), x.Path)).ToList(),
+                                AudioSegments = fmt.AudioFragments?.Select(x => new Uri(new Uri(fmt.FragmentBaseUrl), x.Path)).ToList(),
+                                AudioFormat = fmt.AudioFormat != null ? "." + fmt.AudioFormat : null,
+                                VideoFormat = fmt.VideoFormat != null ? "." + fmt.VideoFormat : null,
+                            });
+                        break;
+                }
+            }
+        }
+
+        // Highest-resolution format, matching the desktop window's default (SelectedFormat=0).
+        private static YDLVideoFormatEntry BestFormat(YDLVideoEntry entry)
+        {
+            var best = entry.Formats[0];
+            var bestH = -1;
+            foreach (var f in entry.Formats)
+            {
+                if (Int32.TryParse(f.Height, out int h) && h > bestH) { bestH = h; best = f; }
+            }
+            return best;
         }
     }
 }
