@@ -31,7 +31,7 @@
             "matches": ["*://*/*"],
             "js": ["embed-detect.js"],
             "run_at": "document_idle",
-            "all_frames": false
+            "all_frames": true
         }
     ],
     "background": {
