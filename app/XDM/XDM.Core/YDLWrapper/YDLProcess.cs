@@ -46,11 +46,28 @@ namespace YDLWrapper
                 fetchCookieArgs = $"--cookies-from-browser {BrowserName}";
             }
 
+            // Vimeo (and similar) domain-restricted embeds carry the hosting page as a
+            // "#__xdmref=<origin>" fragment so yt-dlp can send it as Referer. Strip it
+            // from the URL and turn it into a --referer arg.
+            var targetUrl = Uri!.ToString();
+            var refererArg = string.Empty;
+            var hashIdx = targetUrl.IndexOf("#__xdmref=", StringComparison.Ordinal);
+            if (hashIdx >= 0)
+            {
+                var referer = System.Uri.UnescapeDataString(targetUrl.Substring(hashIdx + "#__xdmref=".Length));
+                targetUrl = targetUrl.Substring(0, hashIdx);
+                if (!string.IsNullOrEmpty(referer))
+                {
+                    refererArg = "--referer " + referer;
+                }
+            }
+
             var sb = new StringBuilder();
             foreach (var arg in new string[] {
                 "--no-warnings", "-q", "-i", "-J",
                 fetchCookieArgs,
-                Uri!.ToString() })
+                refererArg,
+                targetUrl })
             {
                 sb.Append(" " + arg);
             }

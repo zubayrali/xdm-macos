@@ -19,7 +19,11 @@
     const sent = new Set();
 
     const ytWatch = (id) => "https://www.youtube.com/watch?v=" + id;
-    const vimeo = (id) => "https://vimeo.com/" + id;
+    // Domain-restricted Vimeo embeds 404 on vimeo.com/ID and need the player URL,
+    // often with the hosting page as Referer. Carry the page origin in a fragment;
+    // YDLProcess strips it and passes it to yt-dlp as --referer.
+    const vimeo = (id) =>
+        "https://player.vimeo.com/video/" + id + "#__xdmref=" + encodeURIComponent(location.origin);
 
     function scan() {
         const urls = new Set();
