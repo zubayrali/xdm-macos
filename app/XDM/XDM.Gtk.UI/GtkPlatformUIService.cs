@@ -110,10 +110,10 @@ namespace XDM.GtkUI
             propWin.Dispose();
         }
 
-        public void ShowYoutubeDLDialog()
+        public void ShowYoutubeDLDialog(string? url = null, bool autoSearch = false)
         {
             var win = new VideoDownloaderUIController(VideoDownloaderWindow.CreateFromGladeFile());
-            win.Run();
+            win.Run(url, autoSearch);
         }
 
         public void ShowBatchDownloadWindow()

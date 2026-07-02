@@ -294,6 +294,9 @@ export default class App {
         else if (request.type === "links") {
             this.sendBatchLinks(request.links);
         }
+        else if (request.type === "embeds") {
+            this.sendEmbeds(request.embeds);
+        }
         else if (request.type === "vid") {
             let vid = request.itemId;
             this.connector.postMessage("/vid", {
@@ -342,6 +345,9 @@ export default class App {
         if (info.menuItemId == "download-all-links") {
             this.downloadAllLinks(tab);
         }
+        if (info.menuItemId == "grab-embedded-video") {
+            this.grabEmbeddedVideo(tab);
+        }
     }
 
     downloadAllLinks(tab) {
@@ -352,6 +358,34 @@ export default class App {
             target: { tabId: tab.id },
             files: ['contentscript.js']
         }).catch(e => this.logger.log(e));
+    }
+
+    // Force an embed scan on the current page (menu action). Re-injects embed-detect.js,
+    // which posts back a {type:"embeds"} message handled by sendEmbeds().
+    grabEmbeddedVideo(tab) {
+        if (!tab || tab.id == null) return;
+        chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            files: ['embed-detect.js']
+        }).catch(e => this.logger.log(e));
+    }
+
+    // Hand detected embed URLs (youtube/vimeo watch URLs) to XDM's /ydl endpoint, which
+    // opens the yt-dlp Video Downloader and auto-resolves formats. Dedupe per session so
+    // the same embed doesn't reopen the window on every SPA navigation / re-scan.
+    sendEmbeds(embeds) {
+        if (!Array.isArray(embeds) || embeds.length === 0) return;
+        if (!this.isMonitoringEnabled() || !this.connector.isConnected()) return;
+        if (!this.sentEmbeds) this.sentEmbeds = new Set();
+        const fresh = [];
+        for (const url of embeds) {
+            if (!url || this.sentEmbeds.has(url)) continue;
+            this.sentEmbeds.add(url);
+            fresh.push(url);
+        }
+        if (fresh.length > 0) {
+            this.connector.postMessage("/ydl", { urls: fresh });
+        }
     }
 
     // Forward a list of URLs to XDM's batch endpoint, which opens a single selection
@@ -399,6 +433,12 @@ export default class App {
             chrome.contextMenus.create({
                 id: 'download-all-links',
                 title: "Download all links",
+                contexts: ["all"]
+            });
+
+            chrome.contextMenus.create({
+                id: 'grab-embedded-video',
+                title: "Grab embedded video (XDM)",
                 contexts: ["all"]
             });
         });

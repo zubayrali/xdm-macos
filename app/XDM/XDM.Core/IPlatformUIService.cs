@@ -28,7 +28,7 @@ namespace XDM.Core
 
         void ShowPropertiesDialog(DownloadItemBase ent, string cookies, Dictionary<string, List<string>> headers);
 
-        void ShowYoutubeDLDialog();
+        void ShowYoutubeDLDialog(string? url = null, bool autoSearch = false);
 
         void ShowBatchDownloadWindow();
 

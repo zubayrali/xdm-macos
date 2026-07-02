@@ -42,35 +42,7 @@ namespace XDM.Core.UI
 
             this.view.AllowedBrowsers = browsers.Keys.ToList();
 
-            view.SearchClicked += (_, _) =>
-            {
-                var url = view.Url;
-                string? browser = null;
-                if (!string.IsNullOrEmpty(view.SelectedBrowser))
-                {
-                    browsers.TryGetValue(view.SelectedBrowser!, out browser);
-                }
-                if (Helpers.IsUriValid(url))
-                {
-                    view.SwitchToProcessingPage();
-                    ProcessVideo(url, browser, result => ApplicationContext.Application.RunOnUiThread(() =>
-                    {
-                        if (result != null)
-                        {
-                            view.SwitchToFinalPage();
-                            SetVideoResultList(result);
-                        }
-                        else
-                        {
-                            view.SwitchToErrorPage();
-                        }
-                    }));
-                }
-                else
-                {
-                    ApplicationContext.Application.ShowMessageBox(view, TextResource.GetText("MSG_INVALID_URL"));
-                }
-            };
+            view.SearchClicked += (_, _) => StartSearch();
 
             view.CancelClicked += (_, _) =>
             {
@@ -112,15 +84,73 @@ namespace XDM.Core.UI
             DownloadSelectedItems(true, null);
         }
 
+        // Extracted so it can be triggered both by the Search button and by an
+        // auto-search (e.g. an embedded-video URL pushed in from the browser extension).
+        private void StartSearch()
+        {
+            var browsers = new Dictionary<string, string>
+            {
+                ["Google Chrome"] = "chrome",
+                ["Microsoft Edge"] = "edge",
+                ["Mozilla Firefox"] = "firefox",
+                ["Brave"] = "brave",
+                ["Opera"] = "opera",
+                ["Chromium"] = "chromium",
+                ["Safari"] = "safari",
+                ["Vivaldi"] = "vivaldi"
+            };
+            var url = view.Url;
+            string? browser = null;
+            if (!string.IsNullOrEmpty(view.SelectedBrowser))
+            {
+                browsers.TryGetValue(view.SelectedBrowser!, out browser);
+            }
+            if (Helpers.IsUriValid(url))
+            {
+                view.SwitchToProcessingPage();
+                ProcessVideo(url, browser, result => ApplicationContext.Application.RunOnUiThread(() =>
+                {
+                    if (result != null)
+                    {
+                        view.SwitchToFinalPage();
+                        SetVideoResultList(result);
+                    }
+                    else
+                    {
+                        view.SwitchToErrorPage();
+                    }
+                }));
+            }
+            else
+            {
+                ApplicationContext.Application.ShowMessageBox(view, TextResource.GetText("MSG_INVALID_URL"));
+            }
+        }
+
         public void Run()
         {
-            var url = ApplicationContext.Application.GetUrlFromClipboard();
+            Run(null, false);
+        }
+
+        // initialUrl/autoSearch: used by the extension's embedded-video (LMS) detection —
+        // pre-fills the URL and kicks off yt-dlp resolution without a manual click.
+        public void Run(string? initialUrl, bool autoSearch)
+        {
+            var url = initialUrl;
+            if (string.IsNullOrEmpty(url))
+            {
+                url = ApplicationContext.Application.GetUrlFromClipboard();
+            }
             if (url != null && Helpers.IsUriValid(url))
             {
                 view.Url = url;
             }
             view.DownloadLocation = Helpers.GetVideoDownloadFolder();
             view.ShowWindow();
+            if (autoSearch && !string.IsNullOrEmpty(view.Url) && Helpers.IsUriValid(view.Url))
+            {
+                StartSearch();
+            }
         }
 
         private void SetVideoResultList(List<YDLVideoEntry> items)

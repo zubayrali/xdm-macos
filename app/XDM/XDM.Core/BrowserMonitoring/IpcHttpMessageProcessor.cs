@@ -71,6 +71,9 @@ namespace XDM.Core.BrowserMonitoring
                     case "/link":
                         OnBatchMessage(context);
                         break;
+                    case "/ydl": // embedded video (LMS/YouTube/Vimeo iframe) -> yt-dlp format picker
+                        OnEmbedMessage(context);
+                        break;
                     case "/args":
                         OnArgsMessage(context);
                         break;
@@ -84,6 +87,28 @@ namespace XDM.Core.BrowserMonitoring
                 Log.Debug(ex.ToString());
                 throw;
             }
+        }
+
+        // Embedded-video (LMS) detection: the extension collects youtube/vimeo iframe
+        // embeds on a page and POSTs their canonical watch URLs here. We hand the first
+        // one to the existing yt-dlp Video Downloader and auto-run the format search.
+        private class EmbedMessage
+        {
+            public List<string>? Urls { get; set; }
+        }
+
+        private void OnEmbedMessage(RequestContext context)
+        {
+            var msg = JsonConvert.DeserializeObject<EmbedMessage>(Encoding.UTF8.GetString(context.RequestBody!));
+            if (msg?.Urls == null || msg.Urls.Count == 0)
+            {
+                return;
+            }
+            // ponytail: take the first embed; LMS lesson pages carry one video. Multiple
+            // embeds -> loop and open one window each if that ever matters.
+            var url = msg.Urls[0];
+            ApplicationContext.Application.RunOnUiThread(() =>
+                ApplicationContext.PlatformUIService.ShowYoutubeDLDialog(url, true));
         }
 
         private void OnArgsMessage(RequestContext context)

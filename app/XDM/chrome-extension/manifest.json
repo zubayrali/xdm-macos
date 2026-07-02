@@ -26,6 +26,14 @@
             "description": "Toggle XDM browser monitoring"
         }
     },
+    "content_scripts": [
+        {
+            "matches": ["*://*/*"],
+            "js": ["embed-detect.js"],
+            "run_at": "document_idle",
+            "all_frames": false
+        }
+    ],
     "background": {
         "service_worker": "main.js",
         "type": "module"

@@ -22,6 +22,30 @@ and adapted to the bundled extension's 8597 protocol:
 Not ported (deliberately): the fork's configurable `xdmHost` (bundled hardcodes the
 matching 8597) and its separate `/video` protocol (bundled already uses `/media`).
 
+## Embedded-video (LMS) detection → yt-dlp  (2026-07)
+
+LMS lessons (Tutor LMS, Moodle, etc.) usually embed a **YouTube/Vimeo** player rather
+than serving the raw file, so XDM's network-capture path sees nothing to grab. The
+extension now detects those embeds and routes them to XDM's existing yt-dlp Video
+Downloader.
+
+- `embed-detect.js` scans each page for **YouTube/Vimeo `<iframe>` embeds**, **plyr
+  players** (`data-plyr-embed-id` — Tutor LMS uses these), and `og:video`/`twitter:player`
+  meta, and normalizes each to a canonical watch URL (`youtube.com/watch?v=…`,
+  `vimeo.com/…`).
+- **Two triggers** (both wired): it runs automatically as a content script on every page
+  (auto-detect), and there's a **"Grab embedded video (XDM)"** context-menu action to
+  force a scan.
+- Detected URLs are POSTed to the new **`/ydl`** endpoint
+  (`IpcHttpMessageProcessor.OnEmbedMessage`), which opens the **Video Downloader**
+  (`VideoDownloaderUIController.Run(url, autoSearch:true)`) and auto-runs yt-dlp so the
+  format list appears without a manual click. Pick a quality → download.
+- Dedupe: the service worker tracks already-sent embed URLs per session so the window
+  doesn't reopen on every SPA navigation.
+
+This is **legitimate embed extraction only** (public YouTube/Vimeo via yt-dlp). It does
+**not** touch DRM (Widevine/FairPlay/vDocipher) — no CDM/key handling exists or is planned.
+
 ## How the integration actually works
 
 There is **no native messaging** in the current extension. The browser extension is a

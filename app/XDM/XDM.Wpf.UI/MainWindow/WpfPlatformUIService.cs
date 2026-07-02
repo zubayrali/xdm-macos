@@ -131,11 +131,11 @@ namespace XDM.Wpf.UI
             propertiesWindow.ShowDialog(GetMainWindow());
         }
 
-        public void ShowYoutubeDLDialog()
+        public void ShowYoutubeDLDialog(string? url = null, bool autoSearch = false)
         {
             var ydlWindow = new VideoDownloaderWindow() { Owner = GetMainWindow() };
             var win = new VideoDownloaderUIController(ydlWindow);
-            win.Run();
+            win.Run(url, autoSearch);
         }
 
         public void ShowBatchDownloadWindow()
