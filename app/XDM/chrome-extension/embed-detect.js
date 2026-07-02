@@ -82,14 +82,14 @@
     log("scanner active on", location.href);
     report();
 
-    // Catch embeds injected after initial load (plyr/Elementor/AJAX lessons).
-    let ticks = 0;
-    const timer = setInterval(() => {
-        report();
-        if (++ticks >= 8) clearInterval(timer); // ~12s of coverage
-    }, 1500);
-
-    const obs = new MutationObserver(() => report());
+    // Catch embeds injected after initial load. plyr (Tutor LMS) only builds the
+    // YouTube/Vimeo <iframe> when the user hits *play*, which can be long after load
+    // — so we watch for the page's whole life, not a fixed window. plyr also mutates
+    // the DOM every frame while playing, so debounce to avoid re-scanning constantly.
+    let debounce = null;
+    const obs = new MutationObserver(() => {
+        if (debounce) return;
+        debounce = setTimeout(() => { debounce = null; report(); }, 400);
+    });
     obs.observe(document.documentElement, { childList: true, subtree: true });
-    setTimeout(() => obs.disconnect(), 15000);
 })();
