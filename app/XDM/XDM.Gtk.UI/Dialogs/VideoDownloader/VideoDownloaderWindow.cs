@@ -164,6 +164,11 @@ namespace XDM.GtkUI.Dialogs.VideoDownloader
 
         public void ShowWindow()
         {
+            // A Glade window that was never ShowAll()'d does not map on the GTK-quartz
+            // backend, so Present() alone shows nothing (backend runs, no window appears).
+            // ShowAll() realizes every page; restore the initial page right after.
+            ShowAll();
+            SwitchToInitialPage();
             // Present() also activates the app on macOS; Show() leaves the window buried behind the browser
             MacUtil.PresentAndActivate(this);
         }
