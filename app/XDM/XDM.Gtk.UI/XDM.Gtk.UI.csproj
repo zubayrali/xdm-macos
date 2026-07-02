@@ -17,7 +17,8 @@
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <!--<ValidateExecutableReferencesMatchSelfContained>false</ValidateExecutableReferencesMatchSelfContained>-->
-    <DefineConstants>LINUX</DefineConstants>
+    <!-- TRACE must be defined or every Trace.WriteLine (Log.Debug) compiles to a no-op and log.txt is never written. -->
+    <DefineConstants>LINUX;TRACE</DefineConstants>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)'=='Release'">
