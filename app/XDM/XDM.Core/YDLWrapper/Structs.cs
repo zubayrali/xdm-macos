@@ -88,7 +88,7 @@ namespace YDLWrapper
         public string Title { get; set; }
         public string Width { get; set; }
         public string Url { get; set; }
-        public double Vbr { get; set; }
+        public double? Vbr { get; set; } // yt-dlp emits null for audio-only formats
         public string Container { get; set; }
         public string Acodec { get; set; }
         public string Format { get; set; }

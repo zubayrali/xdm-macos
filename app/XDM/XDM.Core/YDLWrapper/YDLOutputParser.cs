@@ -1,9 +1,29 @@
 ﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 
 namespace YDLWrapper
 {
+    // yt-dlp emits numeric fields (width, height, filesize, abr, …) as JSON numbers,
+    // but the model types them as string. Newtonsoft throws on number->string, which
+    // silently failed the whole parse (0 formats). Coerce any scalar token to string.
+    internal class TolerantStringConverter : JsonConverter
+    {
+        public override bool CanConvert(System.Type objectType) => objectType == typeof(string);
+
+        public override object? ReadJson(JsonReader reader, System.Type objectType,
+            object? existingValue, JsonSerializer serializer)
+        {
+            if (reader.Value == null) return null;
+            return System.Convert.ToString(reader.Value, CultureInfo.InvariantCulture);
+        }
+
+        public override void WriteJson(JsonWriter writer, object? value, JsonSerializer serializer)
+            => writer.WriteValue((string?)value);
+    }
+
     public static class YDLOutputParser
     {
         public static List<YDLVideoEntry> Parse(string ydlJsonOutputFile)
@@ -28,7 +48,7 @@ namespace YDLWrapper
                     return res;
                 }
             }
-            catch { }
+            catch (System.Exception ex) { TraceLog.Log.Debug("[YDLParse] " + ex.Message); }
 
             try
             {
@@ -43,7 +63,7 @@ namespace YDLWrapper
                     });
                 }
             }
-            catch { }
+            catch (System.Exception ex) { TraceLog.Log.Debug("[YDLParse] " + ex.Message); }
 
             try
             {
@@ -72,7 +92,7 @@ namespace YDLWrapper
                     //});
                 }
             }
-            catch { }
+            catch (System.Exception ex) { TraceLog.Log.Debug("[YDLParse] " + ex.Message); }
 
             return res;
         }
@@ -201,7 +221,8 @@ namespace YDLWrapper
                 File.ReadAllText(file),
                 new JsonSerializerSettings
                 {
-                    MissingMemberHandling = MissingMemberHandling.Ignore
+                    MissingMemberHandling = MissingMemberHandling.Ignore,
+                    Converters = { new TolerantStringConverter() }
                 });
         }
     }
