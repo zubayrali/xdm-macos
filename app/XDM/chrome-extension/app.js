@@ -58,6 +58,12 @@ export default class App {
             mediaTypes: msg.mediaTypes
         });
         this.updateActionIcon();
+        // flush embeds that arrived while XDM was disconnected
+        if (this.pendingEmbeds && this.pendingEmbeds.length > 0 && this.appEnabled === true) {
+            const queued = this.pendingEmbeds;
+            this.pendingEmbeds = null;
+            this.sendEmbeds(queued);
+        }
     }
 
     onDisconnect() {
@@ -375,17 +381,25 @@ export default class App {
     // the same embed doesn't reopen the window on every SPA navigation / re-scan.
     sendEmbeds(embeds) {
         if (!Array.isArray(embeds) || embeds.length === 0) return;
-        if (!this.isMonitoringEnabled() || !this.connector.isConnected()) return;
+        if (this.userDisabled === true) return;
         if (!this.sentEmbeds) this.sentEmbeds = new Set();
         const fresh = [];
         for (const url of embeds) {
             if (!url || this.sentEmbeds.has(url)) continue;
-            this.sentEmbeds.add(url);
             fresh.push(url);
         }
-        if (fresh.length > 0) {
-            this.connector.postMessage("/ydl", { urls: fresh });
+        if (fresh.length === 0) return;
+        // The MV3 worker often wakes disconnected (native-host handshake races the
+        // embed report) — queue instead of dropping, flush on the next XDM message.
+        if (this.appEnabled !== true || !this.connector.isConnected()) {
+            if (!this.pendingEmbeds) this.pendingEmbeds = [];
+            for (const u of fresh) {
+                if (!this.pendingEmbeds.includes(u)) this.pendingEmbeds.push(u);
+            }
+            return;
         }
+        fresh.forEach(u => this.sentEmbeds.add(u));
+        this.connector.postMessage("/ydl", { urls: fresh });
     }
 
     // Forward a list of URLs to XDM's batch endpoint, which opens a single selection

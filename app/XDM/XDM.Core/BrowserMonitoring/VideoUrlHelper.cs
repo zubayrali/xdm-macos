@@ -84,7 +84,11 @@ namespace XDM.Core.BrowserMonitoring
                 return false;
             }
             return (contentType != null && !(contentType.Contains("f4f") ||
-                                contentType.Contains("m4s") || url.Contains("abst") ||
+                                contentType.Contains("m4s") ||
+                                // fMP4 stream fragments (e.g. Vimeo segment.m4s) come as
+                                // video/mp4, so the URL must be checked too
+                                url.ToLowerInvariant().Contains(".m4s") ||
+                                url.Contains("abst") ||
                                 url.Contains("f4x") || url.Contains(".fbcdn")
                                 || url.Contains("http://127.0.0.1:9614")));
         }
