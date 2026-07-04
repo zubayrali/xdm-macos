@@ -24,6 +24,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)IRequestData.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)UI\ISpeedLimiterWindow.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)UI\SpeedLimiterUIController.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Util\ComponentDownloader.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Util\FileExtensionHelper.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Util\FileHelper.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Util\FormattingHelper.cs" />

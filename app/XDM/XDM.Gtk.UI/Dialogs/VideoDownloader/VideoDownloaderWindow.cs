@@ -292,7 +292,19 @@ namespace XDM.GtkUI.Dialogs.VideoDownloader
             }
             catch
             {
-                if (GtkHelper.ShowConfirmMessageBox(this, TextResource.GetText("MSG_HELPER_TOOLS_MISSING"), "XDM"))
+                if (ComponentDownloader.IsSupported)
+                {
+                    if (GtkHelper.ShowConfirmMessageBox(this,
+                        "yt-dlp is required for video downloads.\nDownload it now (~35 MB)?", "XDM"))
+                    {
+                        ComponentDownloader.DownloadYtDlpInBackground(ok =>
+                            Gtk.Application.Invoke((_, _) =>
+                                ApplicationContext.PlatformUIService.ShowMessageBox(null, ok
+                                    ? "yt-dlp installed. Search for the video again."
+                                    : "yt-dlp download failed. Install manually: brew install yt-dlp")));
+                    }
+                }
+                else if (GtkHelper.ShowConfirmMessageBox(this, TextResource.GetText("MSG_HELPER_TOOLS_MISSING"), "XDM"))
                 {
                     PlatformHelper.OpenBrowser(Links.HelperToolsUrl);
                 }

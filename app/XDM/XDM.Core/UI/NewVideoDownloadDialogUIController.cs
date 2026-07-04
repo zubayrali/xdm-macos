@@ -58,7 +58,19 @@ namespace XDM.Core.UI
                 }
                 if (ApplicationContext.VideoTracker.IsFFmpegRequiredForDownload(id) && !FFmpegMediaProcessor.IsFFmpegInstalled())
                 {
-                    if (ApplicationContext.Application.Confirm(window, TextResource.GetText("MSG_FFMPEG_MISSING")))
+                    if (ComponentDownloader.IsSupported)
+                    {
+                        if (ApplicationContext.Application.Confirm(window,
+                            "FFmpeg is required to merge audio and video.\nDownload it now (~25 MB)?"))
+                        {
+                            ComponentDownloader.DownloadFFmpegInBackground(ok =>
+                                ApplicationContext.Application.RunOnUiThread(() =>
+                                    ApplicationContext.PlatformUIService.ShowMessageBox(null, ok
+                                        ? "FFmpeg installed. Start the download again."
+                                        : "FFmpeg download failed. Install manually: brew install ffmpeg")));
+                        }
+                    }
+                    else if (ApplicationContext.Application.Confirm(window, TextResource.GetText("MSG_FFMPEG_MISSING")))
                     {
                         PlatformHelper.OpenBrowser(Links.HelperToolsUrl);
                     }
