@@ -17,6 +17,26 @@ namespace XDM.Core.Util
             @"\s*[-|–—•·]\s*(YouTube|Vimeo|Dailymotion|Twitch|Facebook|Wistia|Twitter|X|TikTok|Reddit|Bilibili)\s*$",
             RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
+        // Tab titles usually end with the site's own name ("Video Title - Some Site").
+        // Drop that trailing segment, but only when it shares a token with the tab
+        // URL's hostname — so "Lecture 5 - Introduction" is left alone.
+        // ponytail: single trailing segment only; good enough for tab titles
+        public static string? CleanTabTitle(string? title, string? tabUrl)
+        {
+            if (string.IsNullOrEmpty(title) || string.IsNullOrEmpty(tabUrl)) return title;
+            var parts = Regex.Split(title, @"\s+[-|–—•·]\s+");
+            if (parts.Length < 2) return title;
+            string host;
+            try { host = new Uri(tabUrl).Host.ToLowerInvariant(); } catch { return title; }
+            var last = parts[parts.Length - 1];
+            var siteish = Regex.Split(last.ToLowerInvariant(), "[^a-z0-9]+")
+                .Any(t => t.Length >= 4 && host.Contains(t));
+            if (!siteish) return title;
+            var head = title.Substring(0, title.Length - last.Length);
+            head = Regex.Replace(head, @"[\s\-|–—•·]+$", string.Empty).Trim();
+            return head.Length >= 3 ? head : title;
+        }
+
         public static string? SanitizeFileName(string fileName)
         {
             if (fileName == null) return fileName;

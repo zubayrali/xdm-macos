@@ -176,7 +176,8 @@ namespace XDM.Core.BrowserMonitoring
             dmsg.RequestHeaders = msg.RequestHeaders;
             dmsg.ResponseHeaders = msg.ResponseHeaders;
             dmsg.Cookies = msg.Cookie;
-            dmsg.File = FileHelper.SanitizeFileName(msg.File)!;
+            // msg.File is the raw tab title here (see request-watcher.js) — trim the site name
+            dmsg.File = FileHelper.SanitizeFileName(FileHelper.CleanTabTitle(msg.File, msg.TabUrl) ?? msg.File)!;
             dmsg.TabUrl = msg.TabUrl;
             dmsg.TabId = msg.TabId;
             RemoveBlockedHeaders(dmsg);

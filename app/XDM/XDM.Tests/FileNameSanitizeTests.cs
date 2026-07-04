@@ -33,5 +33,28 @@ namespace XDM.Tests
         {
             Assert.AreEqual("download", FileHelper.SanitizeFileName("///"));
         }
+
+        [Test]
+        public void CleanTabTitleDropsSiteNameMatchingHost()
+        {
+            Assert.AreEqual("ibn ata allah hikam", FileHelper.CleanTabTitle(
+                "ibn ata allah hikam - Madina Institute islamic uni courses",
+                "https://madinainstitute.com/tv/hikm-of-ibn-ataillah-part4"));
+            // multi-dash titles: only the trailing site segment goes, "Part4" stays
+            Assert.AreEqual("Hikm of Ibn Ata'illah – Part4", FileHelper.CleanTabTitle(
+                "Hikm of Ibn Ata'illah – Part4 - Madina Institute",
+                "https://madinainstitute.com/tv/x"));
+        }
+
+        [Test]
+        public void CleanTabTitleKeepsUnrelatedSegments()
+        {
+            // last segment is real content, not the site name
+            Assert.AreEqual("Lecture 5 - Introduction", FileHelper.CleanTabTitle(
+                "Lecture 5 - Introduction", "https://example.com/course"));
+            // no separators / no tab url — untouched
+            Assert.AreEqual("Plain Title", FileHelper.CleanTabTitle("Plain Title", "https://example.com"));
+            Assert.AreEqual("A - B", FileHelper.CleanTabTitle("A - B", null));
+        }
     }
 }
