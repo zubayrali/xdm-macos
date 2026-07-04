@@ -36,13 +36,121 @@ cp -r "$SCRIPT_DIR/publish-gtk/." "$MACOS/"
 mkdir -p "$MACOS/XDM.App.Host"
 cp -r "$SCRIPT_DIR/publish-apphost/." "$MACOS/XDM.App.Host/"
 
-# Launcher: point dlopen at Homebrew's GTK before starting the real binary
 BREW_PREFIX="$( [ "$RID" = "osx-arm64" ] && echo /opt/homebrew || echo /usr/local )"
+
+echo "==> Bundling GTK runtime into the app"
+FW="$OUT/Contents/Frameworks"
+LOADERS="$FW/gdk-pixbuf-2.0/2.10.0/loaders"
+mkdir -p "$FW" "$LOADERS"
+
+# The GTK stack GtkSharp dlopens by leaf name (verified via lsof on a running
+# instance). dylibbundler pulls each one's full dependency closure (fontconfig,
+# freetype, png, X11 shims, ...) and rewrites install names to @executable_path.
+GTK_LIBS="libgtk-3.0.dylib libgdk-3.0.dylib
+    libglib-2.0.0.dylib libgobject-2.0.0.dylib libgio-2.0.0.dylib libgmodule-2.0.0.dylib
+    libgdk_pixbuf-2.0.0.dylib
+    libpango-1.0.0.dylib libpangocairo-1.0.0.dylib libpangoft2-1.0.0.dylib
+    libatk-1.0.0.dylib libcairo.2.dylib libcairo-gobject.2.dylib libharfbuzz.0.dylib
+    librsvg-2.2.dylib libgtkmacintegration-gtk3.4.dylib"
+for l in $GTK_LIBS; do
+    cp -L "$BREW_PREFIX/lib/$l" "$FW/"
+done
+
+# GDK-Pixbuf loader modules (SVG one comes from librsvg)
+cp -L "$BREW_PREFIX/lib/gdk-pixbuf-2.0/2.10.0/loaders/"* "$LOADERS/"
+
+# GTK input-method modules (im-quartz gives native macOS input / CJK)
+IMMODULES="$FW/gtk-3.0/3.0.0/immodules"
+mkdir -p "$IMMODULES"
+cp -L "$BREW_PREFIX/lib/gtk-3.0/3.0.0/immodules/"*.so "$IMMODULES/"
+
+bundled_bins() {
+    find "$FW" \( -name "*.dylib" -o -name "*.so" \) ! -type l
+}
+
+command -v dylibbundler >/dev/null || { echo "brew install dylibbundler first"; exit 1; }
+bundled_bins | while read -r f; do
+    dylibbundler -of -b -x "$f" -d "$FW" -p "@executable_path/../Frameworks/" \
+        -s "$BREW_PREFIX/lib" >/dev/null
+done
+
+# dylibbundler rewrites every pre-existing LC_RPATH to the same -p value, and
+# modern dyld refuses binaries with duplicate rpaths. Deps are referenced by
+# full @executable_path paths, so the rpaths are dead weight — drop them all.
+bundled_bins | while read -r f; do
+    while otool -l "$f" | grep -q 'path @executable_path/../Frameworks/ ('; do
+        install_name_tool -delete_rpath "@executable_path/../Frameworks/" "$f" 2>/dev/null || break
+    done
+done
+
+# Rewrite any Homebrew-absolute deps dylibbundler missed (e.g. librsvg's
+# libpixbufloader_svg.so is a stub linking its real .dylib by absolute path).
+bundled_bins | while read -r f; do
+    otool -L "$f" | awk 'NR>1 {print $1}' | grep "^$BREW_PREFIX" | while read -r dep; do
+        leaf="$(basename "$dep")"
+        if [ -f "$(dirname "$f")/$leaf" ]; then
+            install_name_tool -change "$dep" "@loader_path/$leaf" "$f"
+        elif [ -f "$FW/$leaf" ]; then
+            install_name_tool -change "$dep" "@executable_path/../Frameworks/$leaf" "$f"
+        else
+            echo "WARNING: $f depends on unbundled $dep"
+        fi
+    done
+done
+
+# Recreate Homebrew's alias names (e.g. libgdk_pixbuf-2.0.dylib →
+# libgdk_pixbuf-2.0.0.dylib) as symlinks. GtkSharp dlopens some libs by the
+# unversioned name; dylibbundler may even have materialized a second real copy
+# under it — two images of one lib in the process deadlocks glib type init.
+for link in "$BREW_PREFIX/lib/"*.dylib; do
+    [ -L "$link" ] || continue
+    alias="$(basename "$link")"
+    canon="$(basename "$(readlink -f "$link")")"
+    { [ "$alias" = "$canon" ] || [ -L "$FW/$alias" ]; } && continue
+    if [ -f "$FW/$alias" ] && [ ! -f "$FW/$canon" ]; then
+        mv "$FW/$alias" "$FW/$canon"
+    fi
+    if [ -f "$FW/$canon" ]; then
+        rm -f "$FW/$alias"
+        ln -s "$canon" "$FW/$alias"
+    fi
+done
+
+# Shared data GTK expects: icon themes, compiled gsettings schemas, fontconfig config
+mkdir -p "$RES/share/icons" "$RES/share/glib-2.0/schemas" "$RES/etc" "$RES/lib/gio-modules"
+cp -RL "$BREW_PREFIX/share/icons/Adwaita" "$RES/share/icons/"
+cp -RL "$BREW_PREFIX/share/icons/hicolor" "$RES/share/icons/"
+cp "$BREW_PREFIX/share/glib-2.0/schemas/gschemas.compiled" "$RES/share/glib-2.0/schemas/"
+cp -RL "$BREW_PREFIX/etc/fonts" "$RES/etc/"
+
+# Module caches need absolute paths; ship templates the launcher instantiates
+sed "s|$BREW_PREFIX/lib/gdk-pixbuf-2.0|@BUNDLE_FW@/gdk-pixbuf-2.0|g" \
+    "$BREW_PREFIX/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache" > "$RES/loaders.cache.in"
+sed 's|"[^"]*/immodules/|"@BUNDLE_FW@/gtk-3.0/3.0.0/immodules/|g' \
+    "$BREW_PREFIX/lib/gtk-3.0/3.0.0/immodules.cache" > "$RES/immodules.cache.in"
+
+# Launcher: point dlopen and GTK data lookups at the bundled runtime
+# (Homebrew paths kept as secondary fallback for anything missed)
 cat <<EOF > "$MACOS/xdm"
 #!/bin/bash
 HERE="\$(cd "\$(dirname "\$0")" && pwd)"
-export DYLD_FALLBACK_LIBRARY_PATH="$BREW_PREFIX/lib:\$DYLD_FALLBACK_LIBRARY_PATH"
-export XDG_DATA_DIRS="$BREW_PREFIX/share:\${XDG_DATA_DIRS:-/usr/local/share}"
+FW="\$(cd "\$HERE/../Frameworks" && pwd)"
+RES="\$(cd "\$HERE/../Resources" && pwd)"
+export DYLD_FALLBACK_LIBRARY_PATH="\$FW:$BREW_PREFIX/lib:\$DYLD_FALLBACK_LIBRARY_PATH"
+export XDG_DATA_DIRS="\$RES/share:$BREW_PREFIX/share:\${XDG_DATA_DIRS:-/usr/local/share}"
+export GSETTINGS_SCHEMA_DIR="\$RES/share/glib-2.0/schemas"
+export FONTCONFIG_PATH="\$RES/etc/fonts"
+# Bundled libgio has Homebrew's module dir baked in; loading those modules drags
+# the Homebrew glib stack into the process alongside the bundled one. Point gio
+# at an empty dir and use the built-in keyfile settings backend instead of dconf.
+export GIO_MODULE_DIR="\$RES/lib/gio-modules"
+export GSETTINGS_BACKEND=keyfile
+# Module caches want absolute paths — instantiate the templates per launch
+mkdir -p "\$HOME/.xdm-app-data"
+sed "s|@BUNDLE_FW@|\$FW|g" "\$RES/loaders.cache.in" > "\$HOME/.xdm-app-data/pixbuf-loaders.cache"
+export GDK_PIXBUF_MODULE_FILE="\$HOME/.xdm-app-data/pixbuf-loaders.cache"
+sed "s|@BUNDLE_FW@|\$FW|g" "\$RES/immodules.cache.in" > "\$HOME/.xdm-app-data/gtk-immodules.cache"
+export GTK_IM_MODULE_FILE="\$HOME/.xdm-app-data/gtk-immodules.cache"
 # Apps launched from Finder get a minimal PATH without Homebrew, so XDM can't find
 # ffmpeg/yt-dlp. Prepend the Homebrew bin dir (and both arch prefixes) explicitly.
 export PATH="$BREW_PREFIX/bin:/opt/homebrew/bin:/usr/local/bin:\$PATH"
@@ -57,6 +165,10 @@ if command -v iconutil >/dev/null; then
     for s in 16 32 128 256 512; do
         sips -z $s $s "$SRC/XDM.Gtk.UI/xdm-logo-512.png" --out "$ICONSET/icon_${s}x${s}.png" >/dev/null
     done
+    # Retina variants (@2x = double the nominal size; 512@2x skipped, source is 512px)
+    for s in 16 32 128 256; do
+        sips -z $((s*2)) $((s*2)) "$SRC/XDM.Gtk.UI/xdm-logo-512.png" --out "$ICONSET/icon_${s}x${s}@2x.png" >/dev/null
+    done
     iconutil -c icns "$ICONSET" -o "$RES/xdm.icns"
     rm -rf "$ICONSET"
 fi
@@ -68,7 +180,7 @@ cat <<EOF > "$OUT/Contents/Info.plist"
 <dict>
     <key>CFBundleName</key><string>Xtreme Download Manager</string>
     <key>CFBundleDisplayName</key><string>Xtreme Download Manager</string>
-    <key>CFBundleIdentifier</key><string>io.github.subhra74.xdm</string>
+    <key>CFBundleIdentifier</key><string>com.zubayrali.xdm</string>
     <key>CFBundleVersion</key><string>${VERSION}</string>
     <key>CFBundleShortVersionString</key><string>${VERSION}</string>
     <key>CFBundleExecutable</key><string>xdm</string>
@@ -80,12 +192,18 @@ cat <<EOF > "$OUT/Contents/Info.plist"
 </plist>
 EOF
 
-# Ad-hoc sign so Gatekeeper on Apple Silicon will run it locally
+# Ad-hoc sign so Gatekeeper on Apple Silicon will run it locally.
+# Every bundled dylib explicitly: install_name_tool edits invalidated their
+# signatures and codesign --deep misses the nested pixbuf loader dir.
+find "$FW" \( -name "*.dylib" -o -name "*.so" \) ! -type l \
+    -exec codesign --force -s - {} \; 2>/dev/null
 codesign --force --deep -s - "$OUT" 2>/dev/null || true
 
 echo "==> Creating xdm-${VERSION}-${RID}.tar.xz"
 tar -C "$SCRIPT_DIR" -cJf "$SCRIPT_DIR/xdm-${VERSION}-${RID}.tar.xz" xdm.app
 
 echo "Done: $OUT"
-echo "Install with: cp -r $OUT /Applications/"
-echo "Runtime dependency: brew install gtk+3 adwaita-icon-theme"
+# NB: cp -R, not -r — lowercase -r follows symlinks, which duplicates the
+# versioned/unversioned dylib aliases and deadlocks glib type init at startup.
+echo "Install with: cp -R $OUT /Applications/"
+echo "GTK is bundled; optional external tools: brew install ffmpeg yt-dlp"
