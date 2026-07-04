@@ -355,6 +355,34 @@ namespace XDM.Core.Util
 #if NET5_0_OR_GREATER
                 if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
                 {
+                    var home = Environment.GetEnvironmentVariable("HOME") ?? "~";
+                    var plistFile = Path.Combine(home, "Library", "LaunchAgents", "com.zubayrali.xdm.plist");
+                    if (enable)
+                    {
+                        // The .app's CFBundleExecutable is a launcher script ("xdm") that sets
+                        // the bundled-GTK environment; outside the bundle fall back to xdm-app.
+                        var launcher = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "xdm");
+                        if (!File.Exists(launcher))
+                        {
+                            launcher = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "xdm-app");
+                        }
+                        Directory.CreateDirectory(Path.GetDirectoryName(plistFile)!);
+                        File.WriteAllText(plistFile,
+                            "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+                            "<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n" +
+                            "<plist version=\"1.0\">\n<dict>\n" +
+                            "    <key>Label</key><string>com.zubayrali.xdm</string>\n" +
+                            "    <key>ProgramArguments</key>\n    <array>\n" +
+                            $"        <string>{launcher}</string>\n" +
+                            "        <string>--background</string>\n    </array>\n" +
+                            "    <key>RunAtLoad</key><true/>\n" +
+                            "    <key>LimitLoadToSessionType</key><string>Aqua</string>\n" +
+                            "</dict>\n</plist>\n");
+                    }
+                    else if (File.Exists(plistFile))
+                    {
+                        File.Delete(plistFile);
+                    }
                     return true;
                 }
                 if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
@@ -514,6 +542,11 @@ namespace XDM.Core.Util
                     }
                 }
 #if NET5_0_OR_GREATER
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+                {
+                    var home = Environment.GetEnvironmentVariable("HOME") ?? "~";
+                    return File.Exists(Path.Combine(home, "Library", "LaunchAgents", "com.zubayrali.xdm.plist"));
+                }
                 if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
                 {
                     var autoStartDir = GetLinuxDesktopAutoStartDir();
