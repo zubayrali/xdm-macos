@@ -124,6 +124,7 @@ namespace XDM.GtkUI
             categoryTree!.Selection.SelectIter(iter);
             UpdateBrowserMonitorButton();
             CreateMenu();
+            SetupMacMenuBar();
             SetDefaultSize(800, 500);
 
             clipboarMonitor = new PollingClipboardMonitor();
@@ -245,6 +246,95 @@ namespace XDM.GtkUI
             mainMenu.Append(menuAbout);
             mainMenu.Append(menuExit);
             mainMenu.ShowAll();
+        }
+
+        // macOS: real top-of-screen menu bar via gtk-mac-integration. Reuses the same
+        // handlers as the hamburger menu (which stays — harmless duplicate).
+        private void SetupMacMenuBar()
+        {
+            if (!GtkosxApp.IsMac) return;
+
+            // Dock-icon click must restore the window: close-to-background only hides it,
+            // and GTK-quartz ignores the reopen event, leaving the app running with no
+            // reachable window (also the case for --background launches).
+            GtkosxApp.ConnectDidBecomeActive(() => { if (!Visible) ShowAndActivate(); });
+
+            var accel = new AccelGroup();
+            AddAccelGroup(accel);
+
+            MenuItem Item(string label, EventHandler onClick, Gdk.Key key = 0)
+            {
+                var mi = new MenuItem(label);
+                mi.Activated += (s, e) => onClick(s, e ?? EventArgs.Empty);
+                if (key != 0)
+                {
+                    // On GDK-quartz Meta is the Command key
+                    mi.AddAccelerator("activate", accel, (uint)key, Gdk.ModifierType.MetaMask, AccelFlags.Visible);
+                }
+                return mi;
+            }
+
+            var fileMenu = new Menu();
+            fileMenu.Append(Item(TextResource.GetText("LBL_NEW_DOWNLOAD"), MenuNewDownload_Click, Gdk.Key.n));
+            fileMenu.Append(Item(TextResource.GetText("LBL_VIDEO_DOWNLOAD"), MenuVideoDownload_Click));
+            fileMenu.Append(Item(TextResource.GetText("MENU_BATCH_DOWNLOAD"), MenuBatchDownload_Click));
+            var fileRoot = new MenuItem("File") { Submenu = fileMenu };
+
+            // ponytail: English labels for the standard menus; localize if anyone asks
+            var editMenu = new Menu();
+            editMenu.Append(Item("Cut", (_, _) => EditClipboardAction("cut"), Gdk.Key.x));
+            editMenu.Append(Item("Copy", (_, _) => EditClipboardAction("copy"), Gdk.Key.c));
+            editMenu.Append(Item("Paste", (_, _) => EditClipboardAction("paste"), Gdk.Key.v));
+            var editRoot = new MenuItem("Edit") { Submenu = editMenu };
+
+            var windowMenu = new Menu();
+            windowMenu.Append(Item("Minimize", (_, _) => (ActiveToplevel() ?? this).Iconify(), Gdk.Key.m));
+            var windowRoot = new MenuItem("Window") { Submenu = windowMenu };
+
+            var macMenuBar = new MenuBar();
+            macMenuBar.Append(fileRoot);
+            macMenuBar.Append(editRoot);
+            macMenuBar.Append(windowRoot);
+            macMenuBar.ShowAll();
+            macMenuBar.Hide(); // lives only in the native bar, never in the window
+
+            // App menu slots: About, separator, Preferences. Quit ⌘Q comes from the library.
+            var miAbout = Item(TextResource.GetText("MENU_ABOUT"), MenuAbout_Activated);
+            var sep = new SeparatorMenuItem();
+            var miPrefs = Item(TextResource.GetText("TITLE_SETTINGS"), MenuSettings_Activated, Gdk.Key.comma);
+            miAbout.Show();
+            sep.Show();
+            miPrefs.Show();
+
+            var installed = false;
+            Realized += (_, _) =>
+            {
+                if (installed) return;
+                installed = GtkosxApp.Install(macMenuBar, new Widget[] { miAbout, sep, miPrefs }, windowRoot);
+            };
+        }
+
+        private static Gtk.Window? ActiveToplevel()
+        {
+            foreach (var w in Gtk.Window.ListToplevels())
+            {
+                if (w.IsActive) return w;
+            }
+            return null;
+        }
+
+        // Route Edit-menu actions to whatever text widget has focus in the active
+        // window, so ⌘X/⌘C/⌘V keep working inside dialogs too.
+        // ponytail: Editable (Entry) only; add TextView if a multiline field appears
+        private static void EditClipboardAction(string action)
+        {
+            if (ActiveToplevel()?.Focus is not IEditable editable) return;
+            switch (action)
+            {
+                case "cut": editable.CutClipboard(); break;
+                case "copy": editable.CopyClipboard(); break;
+                case "paste": editable.PasteClipboard(); break;
+            }
         }
 
         private void MenuMediaGrabber_Activated(object? sender, EventArgs e)
