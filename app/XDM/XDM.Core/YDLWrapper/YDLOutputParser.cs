@@ -174,7 +174,7 @@ namespace YDLWrapper
                             VideoUrl = video.Url,
                             Title = formatList.Title,
                             YDLEntryType = videotype,
-                            FileExt = "MKV",
+                            FileExt = PickMergedExt(video, audio),
                             VideoCodec = video.Vcodec,
                             AudioCodec = audio.Acodec,
                             Abr = audio.Abr,
@@ -225,6 +225,22 @@ namespace YDLWrapper
         private static bool HasFragments(YDLFormat format)
         {
             return format.Fragments != null && format.Fragments.Count > 0;
+        }
+
+        // The merge is codec-copy either way; the output name picks the container.
+        // Use MP4 when both streams are MP4-native (QuickTime won't open MKV),
+        // MKV for everything else (vp9/opus etc.).
+        private static string PickMergedExt(YDLFormat video, YDLFormat audio)
+        {
+            var v = (GetStringValue(video.Vcodec) ?? string.Empty).ToLowerInvariant();
+            var a = (GetStringValue(audio.Acodec) ?? string.Empty).ToLowerInvariant();
+            var aExt = (audio.Ext ?? string.Empty).ToLowerInvariant();
+            var videoOk = v.StartsWith("avc") || v.StartsWith("h264") ||
+                v.StartsWith("hev") || v.StartsWith("hvc");
+            // HLS audio often has unknown acodec (e.g. Vimeo) — trust the mp4/m4a ext then
+            var audioOk = a.StartsWith("mp4a") || a.Contains("aac") ||
+                (a.Length == 0 && (aExt == "mp4" || aExt == "m4a" || aExt == "aac"));
+            return videoOk && audioOk ? "MP4" : "MKV";
         }
 
         // explicit "none" from yt-dlp — the stream is definitely absent (unlike null = unknown)
