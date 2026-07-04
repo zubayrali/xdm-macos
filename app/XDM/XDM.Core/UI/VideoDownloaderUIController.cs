@@ -184,10 +184,16 @@ namespace XDM.Core.UI
             var formatsList = new List<int>(formatSet);
             formatsList.Sort();
             formatsList.Reverse();
+            // 0 = audio-only sentinel (real heights are always positive); offered
+            // whenever any item has an audio-only format
+            if (items.Any(x => x.Formats != null && x.Formats.Any(IsAudioOnlyFormat)))
+            {
+                formatsList.Add(0);
+            }
             this.videoQualities = formatsList;
 
             var videoList = this.videoItemList.Select(x => x.Title);
-            var formatList = this.videoQualities.Select(n => $"{n}p");
+            var formatList = this.videoQualities.Select(n => n == 0 ? "Audio only" : $"{n}p");
 
             view.SetVideoResultList(videoList, formatList);
 
@@ -265,11 +271,28 @@ namespace XDM.Core.UI
             view.CloseWindow();
         }
 
+        private static bool IsAudioOnlyFormat(YDLVideoFormatEntry format)
+        {
+            return format.VideoUrl == null && format.VideoFragments == null &&
+                (format.AudioUrl != null || format.AudioFragments != null);
+        }
+
         private YDLVideoFormatEntry? FindMatchingFormatByQuality(YDLVideoEntry videoEntry, int quality = -1)
         {
             if (videoEntry.Formats.Count == 0) return null;
             if (quality == -1)
             {
+                return videoEntry.Formats[0];
+            }
+            if (quality == 0) // "Audio only" selected
+            {
+                foreach (var format in videoEntry.Formats)
+                {
+                    if (IsAudioOnlyFormat(format))
+                    {
+                        return format;
+                    }
+                }
                 return videoEntry.Formats[0];
             }
             //if we find an mp4 video with desired height/resolution return it

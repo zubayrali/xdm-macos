@@ -48,6 +48,11 @@ namespace YDLWrapper
             {
                 textBuf.Append(this.VideoFormat);
             }
+            // no video stream at all — say so instead of showing a blank label
+            if (textBuf.Length == 0 && this.VideoUrl == null && this.VideoFragments == null)
+            {
+                textBuf.Append("Audio only ");
+            }
             if (this.Abr != null)
             {
                 textBuf.Append(this.Abr + " kbps ");

@@ -105,6 +105,26 @@ namespace YDLWrapper
 
             foreach (var format in formatList.Formats)
             {
+                // yt-dlp codec semantics: "none" = stream definitely absent,
+                // null/empty = unknown. Vimeo HLS audio comes as vcodec="none" +
+                // acodec=null; folding "none" and null together used to misfile it
+                // as a combined A/V entry (and leave video-only streams unpaired).
+                var audioAbsent = IsNone(format.Acodec);
+                var videoAbsent = IsNone(format.Vcodec);
+                if (videoAbsent && audioAbsent)
+                {
+                    continue; // no playable stream (storyboards etc.)
+                }
+                if (videoAbsent)
+                {
+                    audioOnlyList.Add(format);
+                    continue;
+                }
+                if (audioAbsent)
+                {
+                    videoOnlyList.Add(format);
+                    continue;
+                }
                 var acodec = GetStringValue(format.Acodec);
                 var vcodec = GetStringValue(format.Vcodec);
                 if ((vcodec == null && acodec == null) ||
@@ -166,7 +186,8 @@ namespace YDLWrapper
                 }
             }
 
-            if (list.Count == 0)
+            // Always offer audio-only entries too (after the video ones, so a video
+            // stays the default pick) — lecture/podcast users often want just audio.
             {
                 foreach (var audio in audioOnlyList)
                 {
@@ -204,6 +225,13 @@ namespace YDLWrapper
         private static bool HasFragments(YDLFormat format)
         {
             return format.Fragments != null && format.Fragments.Count > 0;
+        }
+
+        // explicit "none" from yt-dlp — the stream is definitely absent (unlike null = unknown)
+        private static bool IsNone(string? text)
+        {
+            if (string.IsNullOrEmpty(text)) return false;
+            return "none".Equals(text) || "'none'".Equals(text) || "\"none\"".Equals(text);
         }
 
         private static string? GetStringValue(string text)
