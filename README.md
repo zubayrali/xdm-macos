@@ -1,87 +1,64 @@
-<p id="downloads" align="center">
-	<img src="https://i.stack.imgur.com/TOfqL.png" height="120px"/>
-	<h1 align="center">Xtreme Download Manager</h1>
-</p>
+# XDM for macOS (Apple Silicon)
 
-<p align="center">
-	<a href="https://github.com/subhra74/xdm/workflows/Java%20CI/badge.svg?branch=master"><img src="https://github.com/subhra74/xdm/workflows/Java%20CI/badge.svg?branch=master" alt="Java CI" /></a>
-	<a href="https://camo.githubusercontent.com/278e057571a0481121b2d60490ff656fb8736a20/68747470733a2f2f696d672e736869656c64732e696f2f6769746875622f646f776e6c6f6164732f73756268726137342f78646d2f746f74616c2e737667"><img src="https://img.shields.io/github/downloads/subhra74/xdm/total.svg" alt="Github All Releases" /></a>
-</p>
+A revived, macOS-native fork of [Xtreme Download Manager](https://github.com/subhra74/xdm) —
+the C#/.NET download manager — brought back to life for Apple Silicon Macs.
 
-### [XDM Homepage](https://xtremedownloadmanager.com/ "XDM Homepage") ###
+Upstream's last macOS build never ran on modern Macs. This fork does:
 
-[New Experimental Beta version is out](https://github.com/subhra74/xdm-experimental-binaries/tags)
+- **Self-contained `.app`** — GTK runtime is bundled; no Homebrew required to run it.
+- **Behaves like a Mac app** — real top menu bar with ⌘-shortcuts, dock-click restores
+  the window, retina icons, optional start-at-login.
+- **Browser integration** — a Chrome/Chromium extension hands downloads and streaming
+  media to XDM.
+- **Video downloads** — sniffs media from pages and detects embedded YouTube/Vimeo
+  players (including LMS/plyr embeds), resolved through yt-dlp with a format picker;
+  video+audio streams are merged with ffmpeg into `.mp4` (or `.mkv` when the codecs
+  need it).
+- **Classic XDM engine** — segmented multi-connection downloads, resume, queues,
+  scheduler.
 
-[News about new version](https://github.com/subhra74/xdm/discussions/768)
+## Install
 
-**X**treme **D**ownload **M**anager (XDM) is a powerful tool to increase download speeds up to 500%, save videos from popular video streaming websites, resume broken/dead downloads, schedule and convert downloads.<br>
-XDM seamlessly integrates with Google Chrome, Mozilla Firefox Quantum, Opera, Vivaldi and other Chroumium and Firefox based browsers, to take over downloads and saving streaming videos from web. XDM has a built in video converter which lets you convert your downloaded videos to different formats so that you can watch them on your mobile or TV (100+ devices are supported)
+1. Download `xdm-macos-arm64.zip` from [Releases](https://github.com/zubayrali/xdm-macos/releases),
+   unzip, and drag `xdm.app` into `/Applications`.
+2. First launch: **right-click → Open → Open**. The app is ad-hoc signed (no Apple
+   Developer certificate), so plain double-click is blocked by Gatekeeper the first time.
+   Alternatively: `xattr -dr com.apple.quarantine /Applications/xdm.app`
+3. Optional: for video downloads XDM needs `yt-dlp` and `ffmpeg`. When they're missing,
+   XDM offers to download them automatically (into `~/.xdm-app-data`). If you prefer
+   Homebrew: `brew install yt-dlp ffmpeg` works too.
 
-[![name](https://subhra74.github.io/xdm/download.png)](https://xtremedownloadmanager.com/#downloads)
+## Browser extension
 
-## Screenshots
+1. Download `xdm-chrome-extension.zip` from the release, unzip it somewhere permanent.
+2. Open `chrome://extensions` (or the equivalent in Edge/Brave/Vivaldi), enable
+   **Developer mode**, click **Load unpacked**, and pick the unzipped folder.
+3. Make sure XDM is running and **Browser monitoring** is on in the extension popup.
 
-| ![xdm_1][01] | ![xdm_5][05] | ![xdm_3][03] |
-| --- | --- | --- |
-| ![xdm_7][07] | ![xdm_6][06] | ![xdm_9][09] |
-| ![xdm_4][04] | ![xdm_2][02] |  |
-
-
-## Features
-- Download files at maximum possible speed (5-6 times faster than conventional downloaders).
-- XDM can save video from numerous video streaming sites.
-- Works with all modern browsers on Windows, Linux and Mac OS X. XDM supports [Google Chrome][18], [Chromium][18], [Firefox Quantum][19], [Vivaldi][20], [Edge][21] and many other popular browsers.
-- XDM has built in video converter, which lets you convert downloaded video to MP3 and MP4 formats.
-- Supports `HTTP`, `HTTPS`, `FTP` as well as video streaming protocols like `MPEG-DASH`, `Apple HLS`, and `Adobe HDS`.
-- XDM also supports authentication, proxy servers, cookies, redirection etc.
-- Video download, clipboard monitoring, automatic antivirus checking, scheduler, system shutdown on download completion.
-- Resumes broken / dead downloads caused by connection problem, power failure or session expiration.
-- Works with Windows ISA, auto proxy scripts, proxy servers, NTLM, Kerberos authentication.
+Downloads and detected videos then show up in XDM and in the extension popup.
+Firefox is not supported yet (the bundled Firefox extension predates this fork).
 
 ## Building from source
 
-This is a C#/.NET solution (the old Maven/Java instructions applied to XDM 7.x and are obsolete).
-See [docs/CODEBASE.md](docs/CODEBASE.md) for the full guide. Quick start on macOS/Linux:
+```sh
+brew install dotnet@8 gtk+3 adwaita-icon-theme gtk-mac-integration dylibbundler
+/opt/homebrew/opt/dotnet@8/bin/dotnet build app/XDM/XDM.Gtk.UI/XDM.Gtk.UI.csproj -c Release
+./app/packaging/make-macos-app
+cp -R app/packaging/xdm.app /Applications/   # cp -R, not -r (symlinks!)
+```
 
-<pre>
-brew install dotnet@8 gtk+3 adwaita-icon-theme   # macOS
-cd app/XDM
-dotnet build XDM.Gtk.UI/XDM.Gtk.UI.csproj -c Release
-dotnet test XDM.Tests/XDM.Tests.csproj
-../packaging/make-macos-app                       # builds installable xdm.app
-</pre>
+Only `XDM.Gtk.UI`, `XDM.App.Host`, and `XDM.Tests` build on macOS — the
+WPF/WinForms projects are Windows-only. See `docs/CODEBASE.md` for the codebase
+guide and `docs/macos-native-polish.md` for how the macOS packaging works.
 
-## Submitting translations
-If you want to translate XDM to your language, feel free to submit a translation file.<br>
-Steps are mentioned in: https://github.com/subhra74/xdm/wiki/Submitting-translations-for-XDM
+## Scope & credits
 
+This fork targets **macOS on Apple Silicon** (Intel may work via the same build, untested).
+Windows and Linux users should use [upstream XDM](https://github.com/subhra74/xdm).
 
-[//]: #ImageLinks
-[01]: https://i.stack.imgur.com/s7ViA.jpg
-[02]: https://i.stack.imgur.com/90TQO.jpg
-[03]: https://i.stack.imgur.com/V5XF3.jpg
-[04]: https://i.stack.imgur.com/aFyH5.png
-[05]: https://i.stack.imgur.com/lmAr6.png
-[06]: https://i.stack.imgur.com/H4yMj.png
-[07]: https://i.stack.imgur.com/8ulBq.png
-[08]: https://i.stack.imgur.com/Gfgae.jpg
-[09]: https://i.stack.imgur.com/GlVDC.png
+All credit for XDM itself goes to [@subhra74](https://github.com/subhra74).
+Licensed under [GPL-2.0](LICENSE), same as upstream.
 
-[//]: #DownloadLinks
-[10]: https://github.com/subhra74/xdm/releases/download/7.2.10/xdmsetup.msi
-[11]: https://github.com/subhra74/xdm/releases/download/7.2.10/xdm-setup-7.2.10.tar.xz
-[12]: #
-[13]: https://github.com/subhra74/xdm/releases/download/7.2.10/xdman.jar
-[14]: https://sourceforge.net/projects/xdman/files/xdmsetup-2018.msi/download
-[15]: https://sourceforge.net/projects/xdman/files/xdm-2018-x64.tar.xz/download
-[16]: https://sourceforge.net/projects/xdman/files/XDMSetup.dmg/download
-[17]: http://xdman.sourceforge.net/xdman.jar
-[100]: https://github.com/subhra74/xdm/releases/download/7.2.11/xdm-setup.msi
-[101]: https://github.com/subhra74/xdm/releases/download/7.2.11/xdm-setup-7.2.11.tar.xz
-[102]: https://github.com/subhra74/xdm/releases/download/7.2.11/xdman.jar
-
-[//]: #AddonLinks
-[18]: https://chrome.google.com/webstore/detail/xtreme-download-manager/dkckaoghoiffdbomfbbodbbgmhjblecj
-[19]: https://addons.mozilla.org/en-US/firefox/addon/xdm-browser-monitor/
-[20]: #
-[21]: https://sourceforge.net/p/xdman/blog/2018/01/xdm-integration-with-microsoft-edge/
+Downloading videos may be restricted by the terms of service of the site hosting
+them and by copyright law — download only content you have the right to save.
+DRM-protected content is out of scope and unsupported.
